@@ -23,22 +23,28 @@ fn main() {
     }
 }
 
-fn run() -> Result<(), Box<dyn std::error::Error>> {
+fn run() -> Result<(), RjdError> {
     // Parse command-line arguments
     let args = cli::Args::parse();
 
     // Load and parse JSON from either files or inline strings
-    let old_json = load_json_input(&args.file1)
-        .map_err(|e| format!("Failed to load input '{}': {}", args.file1, e))?;
-    let new_json = load_json_input(&args.file2)
-        .map_err(|e| format!("Failed to load input '{}': {}", args.file2, e))?;
+    let old_json = load_json_input(&args.file1).map_err(|e| RjdError::Internal {
+        message: format!("Failed to load '{}': {}", args.file1, e),
+    })?;
+    let new_json = load_json_input(&args.file2).map_err(|e| RjdError::Internal {
+        message: format!("Failed to load '{}': {}", args.file2, e),
+    })?;
 
     // Compute diff
     let changes = diff(&old_json, &new_json);
 
     // Format and output results
     let formatter = create_formatter(args.format, args.sort);
-    let output = formatter.format(&changes)?;
+    let output = formatter
+        .format(&changes)
+        .map_err(|e| RjdError::Formatter {
+            message: e.to_string(),
+        })?;
 
     println!("{}", output);
 

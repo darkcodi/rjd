@@ -21,6 +21,9 @@ pub enum RjdError {
 
     #[error("Internal error: {message}")]
     Internal { message: String },
+
+    #[error("Formatter error: {message}")]
+    Formatter { message: String },
 }
 
 // Note: From implementations for IO/JSON errors are intentionally omitted.
