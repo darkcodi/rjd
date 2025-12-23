@@ -14,7 +14,7 @@ pub use cli::Args;
 pub use diff::diff;
 pub use error::RjdError;
 pub use formatter::create_formatter;
-pub use loader::load_json_file;
+pub use loader::{load_json_file, load_json_input};
 
 fn main() {
     if let Err(err) = run() {
@@ -27,32 +27,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command-line arguments
     let args = cli::Args::parse();
 
-    // Validate that files exist
-    if !args.file1.exists() {
-        return Err(Box::new(RjdError::FileRead {
-            path: args.file1.clone(),
-            source: std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("File not found: {}", args.file1.display()),
-            ),
-        }));
-    }
-
-    if !args.file2.exists() {
-        return Err(Box::new(RjdError::FileRead {
-            path: args.file2.clone(),
-            source: std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("File not found: {}", args.file2.display()),
-            ),
-        }));
-    }
-
-    // Load and parse JSON files
-    let old_json = load_json_file(&args.file1)
-        .map_err(|e| format!("Failed to load {}: {}", args.file1.display(), e))?;
-    let new_json = load_json_file(&args.file2)
-        .map_err(|e| format!("Failed to load {}: {}", args.file2.display(), e))?;
+    // Load and parse JSON from either files or inline strings
+    let old_json = load_json_input(&args.file1)
+        .map_err(|e| format!("Failed to load input '{}': {}", args.file1, e))?;
+    let new_json = load_json_input(&args.file2)
+        .map_err(|e| format!("Failed to load input '{}': {}", args.file2, e))?;
 
     // Compute diff
     let changes = diff(&old_json, &new_json);

@@ -1,5 +1,4 @@
 use clap::Parser;
-use std::path::PathBuf;
 
 /// Output format options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -23,13 +22,13 @@ impl std::fmt::Display for OutputFormat {
 /// Command-line arguments for rjd
 #[derive(Parser, Debug)]
 #[command(name = "rjd")]
-#[command(about = "Compare two JSON files and show differences")]
+#[command(about = "Compare two JSON files or inline JSON strings")]
 pub struct Args {
-    /// First JSON file to compare
-    pub file1: PathBuf,
+    /// First JSON file or inline JSON string
+    pub file1: String,
 
-    /// Second JSON file to compare
-    pub file2: PathBuf,
+    /// Second JSON file or inline JSON string
+    pub file2: String,
 
     /// Output format (default: changes)
     #[arg(short, long, default_value_t = OutputFormat::Changes, hide_default_value = true)]
