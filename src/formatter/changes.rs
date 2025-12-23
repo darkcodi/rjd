@@ -1,4 +1,4 @@
-use crate::formatter::Formatter;
+use crate::formatter::{sort_json_value, Formatter};
 use crate::types::Changes;
 
 /// Formatter for the "changes" output format
@@ -50,25 +50,6 @@ impl Formatter for ChangesFormatter {
         } else {
             Ok(serde_json::to_string(changes)?)
         }
-    }
-}
-
-/// Recursively sort a JSON value's keys
-fn sort_json_value(value: &serde_json::Value) -> serde_json::Value {
-    match value {
-        serde_json::Value::Object(map) => {
-            let mut sorted_map = serde_json::Map::new();
-            let mut keys: Vec<_> = map.keys().collect();
-            keys.sort();
-            for key in keys {
-                sorted_map.insert(key.clone(), sort_json_value(map.get(key).unwrap()));
-            }
-            serde_json::Value::Object(sorted_map)
-        }
-        serde_json::Value::Array(arr) => {
-            serde_json::Value::Array(arr.iter().map(sort_json_value).collect())
-        }
-        _ => value.clone(),
     }
 }
 

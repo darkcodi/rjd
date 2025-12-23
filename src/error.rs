@@ -23,20 +23,7 @@ pub enum RjdError {
     Internal { message: String },
 }
 
-impl From<std::io::Error> for RjdError {
-    fn from(error: std::io::Error) -> Self {
-        RjdError::FileRead {
-            path: PathBuf::new(),
-            source: error,
-        }
-    }
-}
-
-impl From<serde_json::Error> for RjdError {
-    fn from(error: serde_json::Error) -> Self {
-        RjdError::JsonParse {
-            path: PathBuf::new(),
-            source: error,
-        }
-    }
-}
+// Note: From implementations for IO/JSON errors are intentionally omitted.
+// These errors require a path context which cannot be provided by From.
+// Use map_err with explicit path construction instead:
+//   fs::read_to_string(path).map_err(|source| RjdError::FileRead { path: path.clone(), source })?;

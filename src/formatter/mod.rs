@@ -7,10 +7,12 @@
 mod after;
 mod changes;
 mod json_patch;
+mod util;
 
 pub use after::AfterFormatter;
 pub use changes::ChangesFormatter;
 pub use json_patch::JsonPatchFormatter;
+pub use util::sort_json_value;
 
 /// Trait for formatting diff results
 pub trait Formatter {
