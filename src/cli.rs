@@ -3,6 +3,9 @@ use clap::Parser;
 /// Output format options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormat {
+    #[value(name = "changes")]
+    Changes, // Default: {added, removed, modified}
+
     #[value(name = "after")]
     After, // Output the "after" state with only changed properties
 
@@ -13,6 +16,7 @@ pub enum OutputFormat {
 impl std::fmt::Display for OutputFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            OutputFormat::Changes => write!(f, "changes"),
             OutputFormat::After => write!(f, "after"),
             OutputFormat::Rfc6902 => write!(f, "rfc6902"),
         }
