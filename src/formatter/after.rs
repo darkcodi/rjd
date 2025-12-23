@@ -109,6 +109,18 @@ fn insert_value_at_path(
         return;
     }
 
+    // Check if the original_path exists as a single key in the source
+    // If so, insert it directly without parsing as nested path
+    if let Value::Object(source_map) = source_value {
+        if source_map.contains_key(original_path) {
+            // Insert the entire path as a single key
+            if let Some(value) = get_value_at_path(source_value, original_path) {
+                target.insert(original_path.to_string(), value);
+            }
+            return;
+        }
+    }
+
     // Parse the first segment
     let (first_segment, is_array, remaining_path) = parse_first_segment(path);
 
