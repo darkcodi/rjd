@@ -49,14 +49,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Load and parse JSON files
-    println!("Loading files...");
     let old_json = load_json_file(&args.file1)
         .map_err(|e| format!("Failed to load {}: {}", args.file1.display(), e))?;
     let new_json = load_json_file(&args.file2)
         .map_err(|e| format!("Failed to load {}: {}", args.file2.display(), e))?;
 
     // Compute diff
-    println!("Computing diff...");
     let changes = diff(&old_json, &new_json);
 
     // Format and output results
