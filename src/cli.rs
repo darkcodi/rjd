@@ -34,7 +34,7 @@ pub struct Args {
     /// Second JSON file or inline JSON string
     pub file2: String,
 
-    /// Output format (default: rfc6902)
-    #[arg(short, long, default_value_t = OutputFormat::Rfc6902, hide_default_value = true)]
+    /// Output format (default: changes)
+    #[arg(short, long, default_value_t = OutputFormat::Changes, hide_default_value = true)]
     pub format: OutputFormat,
 }
