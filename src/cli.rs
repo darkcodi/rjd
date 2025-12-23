@@ -8,7 +8,7 @@ pub enum OutputFormat {
     Changes, // Default: {added, removed, modified}
 
     #[value(name = "after")]
-    After,   // Output the "after" state with only changed properties
+    After, // Output the "after" state with only changed properties
 }
 
 impl std::fmt::Display for OutputFormat {

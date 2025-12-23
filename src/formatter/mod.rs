@@ -4,11 +4,11 @@
 //! The default is the "changes" format which outputs a structured JSON
 //! object with added, removed, and modified arrays.
 
-mod changes;
 mod after;
+mod changes;
 
-pub use changes::ChangesFormatter;
 pub use after::AfterFormatter;
+pub use changes::ChangesFormatter;
 
 /// Trait for formatting diff results
 pub trait Formatter {

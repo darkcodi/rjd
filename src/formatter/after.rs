@@ -1,6 +1,6 @@
 use crate::formatter::Formatter;
 use crate::types::{Change, Changes};
-use serde_json::{Value, Map};
+use serde_json::{Map, Value};
 use std::collections::HashSet;
 
 /// Formatter for the "after" output format
@@ -99,7 +99,12 @@ fn build_filtered_value(value: &Value, changed_paths: &HashSet<String>) -> Value
 }
 
 /// Insert a value at the given path into the target map
-fn insert_value_at_path(target: &mut Map<String, Value>, path: &str, source_value: &Value, original_path: &str) {
+fn insert_value_at_path(
+    target: &mut Map<String, Value>,
+    path: &str,
+    source_value: &Value,
+    original_path: &str,
+) {
     if path.is_empty() {
         return;
     }
@@ -256,7 +261,9 @@ fn parse_first_segment(path: &str) -> (String, bool, &str) {
             // Check if this is an array index (ends with ])
             if end_bracket == brackets_pos + 1 || end_bracket < path.len() {
                 let segment = &path[..end_bracket + 1];
-                let rest = if end_bracket + 1 < path.len() && path.chars().nth(end_bracket + 1) == Some('.') {
+                let rest = if end_bracket + 1 < path.len()
+                    && path.chars().nth(end_bracket + 1) == Some('.')
+                {
                     &path[end_bracket + 2..]
                 } else {
                     &path[end_bracket + 1..]
@@ -328,7 +335,10 @@ mod tests {
         let mut map = Map::new();
         map.insert("name".to_string(), Value::String("Alice".to_string()));
         map.insert("age".to_string(), Value::Number(30.into()));
-        map.insert("email".to_string(), Value::String("alice@example.com".to_string()));
+        map.insert(
+            "email".to_string(),
+            Value::String("alice@example.com".to_string()),
+        );
         let after_value = Value::Object(map);
 
         changes.after = Some(after_value);
@@ -344,7 +354,10 @@ mod tests {
         assert!(parsed.is_object());
         let obj = parsed.as_object().unwrap();
         assert_eq!(obj.len(), 1);
-        assert_eq!(obj.get("email"), Some(&Value::String("alice@example.com".to_string())));
+        assert_eq!(
+            obj.get("email"),
+            Some(&Value::String("alice@example.com".to_string()))
+        );
     }
 
     #[test]
@@ -382,7 +395,10 @@ mod tests {
         let mut map = Map::new();
         map.insert("name".to_string(), Value::String("Alice".to_string()));
         map.insert("age".to_string(), Value::Number(31.into()));
-        map.insert("email".to_string(), Value::String("alice@example.com".to_string()));
+        map.insert(
+            "email".to_string(),
+            Value::String("alice@example.com".to_string()),
+        );
         let after_value = Value::Object(map);
 
         changes.after = Some(after_value);
@@ -412,7 +428,10 @@ mod tests {
         assert_eq!(obj.len(), 3);
         assert_eq!(obj.get("name"), Some(&Value::String("Alice".to_string())));
         assert_eq!(obj.get("age"), Some(&Value::Number(31.into())));
-        assert_eq!(obj.get("email"), Some(&Value::String("alice@example.com".to_string())));
+        assert_eq!(
+            obj.get("email"),
+            Some(&Value::String("alice@example.com".to_string()))
+        );
     }
 
     #[test]
