@@ -5,7 +5,7 @@ use serde_json::Value;
 /// This trait allows for flexible traversal of JSON structures.
 /// Different implementations can perform different operations during traversal.
 pub trait ValueVisitor {
-    type Output;
+    type Output: Default;
 
     /// Visit a null value
     fn visit_null(
@@ -56,10 +56,12 @@ pub trait ValueVisitor {
     ) -> Self::Output;
 
     /// Called when both values are the same (no change)
+    ///
+    /// Override this method if you need to track equal values.
+    /// The default implementation does nothing.
+    #[allow(unused)]
     fn visit_equal(&mut self, _path: &str, _value: &Value) -> Self::Output {
-        // Default implementation - no output for equal values
-        // Can be overridden by visitors that need to track equal values
-        unimplemented!()
+        Self::Output::default()
     }
 }
 
@@ -130,8 +132,8 @@ where
         }
         (None, None) => {
             // Both are None - this shouldn't happen in normal traversal
-            // but we handle it gracefully
-            unimplemented!()
+            // but we handle it gracefully by returning default output
+            <V as ValueVisitor>::Output::default()
         }
     }
 }
@@ -159,7 +161,10 @@ pub trait ValueVisitorExt: ValueVisitor {
                 // This shouldn't happen for modified values
                 self.visit_object(path, None, new.as_object())
             }
-            (None, None) => unimplemented!(),
+            (None, None) => {
+                // Both are None - nothing to do
+                Self::Output::default()
+            }
         }
     }
 }
