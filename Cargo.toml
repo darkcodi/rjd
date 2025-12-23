@@ -1,6 +1,23 @@
 [package]
 name = "rjd"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+# CLI argument parsing
+clap = { version = "4.0", features = ["derive"] }
+
+# JSON parsing and serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+
+# Testing
+[dev-dependencies]
+proptest = "1.0"
+
+[[bin]]
+name = "rjd"
+path = "src/main.rs"
