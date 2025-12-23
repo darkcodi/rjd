@@ -1,22 +1,8 @@
 {
-  "name": "Jane Doe",
-  "age": 31,
-  "email": "jane@example.com",
-  "phone": "555-1234",
+  "name": "Alice",
+  "age": 26,
   "address": {
-    "street": "456 Oak Avenue",
-    "city": "San Francisco",
-    "zipCode": "94102",
-    "country": "USA"
+    "city": "LA"
   },
-  "hobbies": [
-    "reading",
-    "painting",
-    "photography"
-  ],
-  "isActive": true,
-  "metadata": {
-    "joinedDate": "2023-01-15",
-    "lastLogin": "2024-12-20"
-  }
+  "hobbies": ["reading", "painting"]
 }

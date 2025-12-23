@@ -1,17 +1,9 @@
 {
-  "name": "John Doe",
-  "age": 30,
-  "email": "john@example.com",
+  "name": "Alice",
+  "age": 25,
   "address": {
-    "street": "123 Main St",
-    "city": "New York",
-    "zipCode": "10001"
+    "city": "NYC",
+    "country": "USA"
   },
-  "hobbies": [
-    "reading",
-    "gaming",
-    "hiking"
-  ],
-  "isActive": true,
-  "metadata": null
+  "hobbies": ["reading"]
 }
