@@ -159,4 +159,9 @@ impl<'a> DiffVisitor<'a> {
     }
 }
 
-impl<'a> ValueVisitorExt for DiffVisitor<'a> {}
+impl<'a> ValueVisitorExt for DiffVisitor<'a> {
+    fn visit_modified(&mut self, path: &str, old_value: Option<&Value>, new_value: Option<&Value>) -> Self::Output {
+        // For type mismatches or primitive modifications, just record the change
+        self.handle_change(path, old_value.cloned(), new_value.cloned())
+    }
+}
