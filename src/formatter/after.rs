@@ -1,7 +1,6 @@
 use crate::formatter::Formatter;
 use crate::types::{Change, Changes};
 use serde_json::{Map, Value};
-use std::collections::HashSet;
 
 /// Formatter for the "after" output format
 ///
@@ -50,23 +49,24 @@ impl Formatter for AfterFormatter {
             }
         };
 
-        // Collect all changed paths (added and modified only)
-        let mut changed_paths = HashSet::new();
-
+        // Build a set of all changed paths for fast lookup
+        let mut changed_paths = std::collections::HashSet::new();
         for change in &changes.added {
             if let Change::Added { path, .. } = change {
                 changed_paths.insert(path.clone());
             }
         }
-
         for change in &changes.modified {
             if let Change::Modified { path, .. } = change {
                 changed_paths.insert(path.clone());
             }
         }
 
+        // Collect paths in the order they appear in the "after" file
+        let ordered_paths = collect_paths_in_order(after_value, "", &changed_paths);
+
         // Build the filtered "after" value
-        let filtered_after = build_filtered_value(after_value, &changed_paths);
+        let filtered_after = build_filtered_value(after_value, &ordered_paths);
 
         // Serialize to JSON
         let json = if self.pretty {
@@ -86,8 +86,60 @@ impl Formatter for AfterFormatter {
     }
 }
 
+/// Collect paths that have changes, in the order they appear in the value
+fn collect_paths_in_order(
+    value: &Value,
+    prefix: &str,
+    changed_paths: &std::collections::HashSet<String>,
+) -> Vec<String> {
+    let mut paths = Vec::new();
+
+    match value {
+        Value::Object(map) => {
+            for key in map.keys() {
+                let path = if prefix.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{}.{}", prefix, key)
+                };
+
+                // Check if this exact path is in the changed set
+                if changed_paths.contains(&path) {
+                    paths.push(path);
+                } else {
+                    // Recurse into nested object/array to find changes
+                    let nested_paths =
+                        collect_paths_in_order(map.get(key).unwrap(), &path, changed_paths);
+                    paths.extend(nested_paths);
+                }
+            }
+        }
+        Value::Array(arr) => {
+            for (i, elem) in arr.iter().enumerate() {
+                let path = format!("{}[{}]", prefix, i);
+                // Check if this exact path is in the changed set
+                if changed_paths.contains(&path) {
+                    paths.push(path);
+                } else {
+                    // Recurse into array element
+                    let nested_paths = collect_paths_in_order(elem, &path, changed_paths);
+                    paths.extend(nested_paths);
+                }
+            }
+        }
+        _ => {
+            // Primitive value - check if the path itself is changed
+            if changed_paths.contains(prefix) {
+                paths.push(prefix.to_string());
+            }
+        }
+    }
+
+    paths
+}
+
 /// Build a filtered value containing only the paths in the changed_paths set
-fn build_filtered_value(value: &Value, changed_paths: &HashSet<String>) -> Value {
+fn build_filtered_value(value: &Value, changed_paths: &[String]) -> Value {
     // Special case: if value is a primitive or the changed paths set is empty
     if !value.is_object() && !value.is_array() {
         return value.clone();

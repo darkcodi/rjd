@@ -5,11 +5,16 @@ Compare JSON files or strings and output the differences.
 ## Usage
 
 ```bash
-rjd file1.json file2.json              # changes format (default)
-rjd file1.json file2.json --format rfc6902
-rjd file1.json file2.json --format after
-rjd '{"name":"John"}' '{"name":"Jane"}'  # inline JSON
+rjd file1.json file2.json                   # changes format (default)
+rjd file1.json file2.json --format rfc6902  # RFC 6902 JSON Patch format
+rjd file1.json file2.json --format after    # show changed properties only
+rjd file1.json file2.json --sort            # sort keys alphabetically
+rjd '{"name":"John"}' '{"name":"Jane"}'     # inline JSON
 ```
+
+### Options
+
+- `--sort, -s` - Sort keys alphabetically in the output (useful for consistent diffs)
 
 ## Examples
 
@@ -102,16 +107,17 @@ rjd data/file1.json data/file2.json
 **Output (after format):**
 ```json
 {
+  "age": 26,
   "address": {
     "city": "LA"
   },
   "hobbies": [
     "reading",
     "painting"
-  ],
-  "age": 26
+  ]
 }
 ```
+The `after` format preserves the key order from `file2.json`, showing only properties that were added or modified.
 
 ### Inline JSON
 

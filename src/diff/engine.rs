@@ -94,19 +94,36 @@ impl<'a> ValueVisitor for DiffVisitor<'a> {
         old_value: Option<&serde_json::Map<String, Value>>,
         new_value: Option<&serde_json::Map<String, Value>>,
     ) -> Self::Output {
-        let old_keys = old_value
+        // Collect all keys in order from the "after" file (new_value), preserving insertion order
+        // This ensures the output order matches the "after" file's key order
+        let mut all_keys: Vec<String> = Vec::new();
+        let mut seen_keys = std::collections::HashSet::new();
+
+        // Process new keys first to preserve "after" file order
+        for key in new_value
             .as_ref()
             .map(|m| m.keys())
             .into_iter()
             .flatten()
-            .cloned();
-        let new_keys = new_value
+            .cloned()
+        {
+            if seen_keys.insert(key.clone()) {
+                all_keys.push(key);
+            }
+        }
+
+        // Then add any keys that only exist in old_value
+        for key in old_value
             .as_ref()
             .map(|m| m.keys())
             .into_iter()
             .flatten()
-            .cloned();
-        let all_keys: std::collections::HashSet<String> = old_keys.chain(new_keys).collect();
+            .cloned()
+        {
+            if seen_keys.insert(key.clone()) {
+                all_keys.push(key);
+            }
+        }
 
         for key in all_keys {
             let key_path = join_path(path, &key);
