@@ -47,11 +47,13 @@ pub fn load_json_file(path: &PathBuf) -> Result<Value, RjdError> {
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_load_valid_json() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let file_path = temp_dir.path().join("test.json");
+        let temp_file = NamedTempFile::new().unwrap();
+        let file_path = temp_file.path().to_path_buf();
+        drop(temp_file);
         std::fs::write(&file_path, r#"{"name": "test", "value": 42}"#).unwrap();
 
         let result = load_json_file(&file_path);
@@ -70,8 +72,9 @@ mod tests {
 
     #[test]
     fn test_load_invalid_json() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let file_path = temp_dir.path().join("invalid.json");
+        let temp_file = NamedTempFile::new().unwrap();
+        let file_path = temp_file.path().to_path_buf();
+        drop(temp_file);
         std::fs::write(&file_path, r#"{"invalid": json}"#).unwrap();
 
         let result = load_json_file(&file_path);

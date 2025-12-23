@@ -17,6 +17,7 @@ thiserror = "1.0"
 # Testing
 [dev-dependencies]
 proptest = "1.0"
+tempfile = "3.0"
 
 [[bin]]
 name = "rjd"

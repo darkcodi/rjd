@@ -5,8 +5,10 @@
 //! object with added, removed, and modified arrays.
 
 mod changes;
+mod after;
 
 pub use changes::ChangesFormatter;
+pub use after::AfterFormatter;
 
 /// Trait for formatting diff results
 pub trait Formatter {
@@ -19,5 +21,6 @@ pub trait Formatter {
 pub fn create_formatter(format: crate::cli::OutputFormat) -> Box<dyn Formatter> {
     match format {
         crate::cli::OutputFormat::Changes => Box::new(ChangesFormatter::new()),
+        crate::cli::OutputFormat::After => Box::new(AfterFormatter::new()),
     }
 }

@@ -6,6 +6,7 @@ use serde_json::Value;
 /// Main diff function - compares two JSON values and returns all changes
 pub fn diff(old: &Value, new: &Value) -> Changes {
     let mut changes = Changes::new();
+    changes.after = Some(new.clone());
     let mut visitor = DiffVisitor {
         changes: &mut changes,
     };

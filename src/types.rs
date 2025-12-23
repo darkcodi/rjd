@@ -26,6 +26,8 @@ pub struct Changes {
     pub added: Vec<Change>,
     pub removed: Vec<Change>,
     pub modified: Vec<Change>,
+    #[serde(skip)]
+    pub after: Option<Value>,
 }
 
 impl Changes {
@@ -35,6 +37,7 @@ impl Changes {
             added: Vec::new(),
             removed: Vec::new(),
             modified: Vec::new(),
+            after: None,
         }
     }
 

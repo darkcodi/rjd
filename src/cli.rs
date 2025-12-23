@@ -2,26 +2,20 @@ use clap::Parser;
 use std::path::PathBuf;
 
 /// Output format options
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormat {
+    #[value(name = "changes")]
     Changes, // Default: {added, removed, modified}
-}
 
-impl std::str::FromStr for OutputFormat {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "changes" => Ok(OutputFormat::Changes),
-            _ => Err(format!("Unknown output format: {}", s)),
-        }
-    }
+    #[value(name = "after")]
+    After,   // Output the "after" state with only changed properties
 }
 
 impl std::fmt::Display for OutputFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             OutputFormat::Changes => write!(f, "changes"),
+            OutputFormat::After => write!(f, "after"),
         }
     }
 }
@@ -38,6 +32,6 @@ pub struct Args {
     pub file2: PathBuf,
 
     /// Output format (default: changes)
-    #[arg(short, long, default_value = "changes")]
+    #[arg(short, long, default_value_t = OutputFormat::Changes, hide_default_value = true)]
     pub format: OutputFormat,
 }
