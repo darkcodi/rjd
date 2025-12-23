@@ -47,11 +47,29 @@ rjd data/file1.json data/file2.json
 **Output (changes format):**
 ```json
 {
-  "added": [{"path": "hobbies[1]", "value": "painting"}],
-  "removed": [{"path": "address.country", "value": "USA"}],
+  "added": [
+    {
+      "path": "hobbies[1]",
+      "value": "painting"
+    }
+  ],
+  "removed": [
+    {
+      "path": "address.country",
+      "value": "USA"
+    }
+  ],
   "modified": [
-    {"path": "address.city", "old_value": "NYC", "new_value": "LA"},
-    {"path": "age", "old_value": 25, "new_value": 26}
+    {
+      "path": "address.city",
+      "old_value": "NYC",
+      "new_value": "LA"
+    },
+    {
+      "path": "age",
+      "old_value": 25,
+      "new_value": 26
+    }
   ]
 }
 ```
@@ -59,19 +77,39 @@ rjd data/file1.json data/file2.json
 **Output (rfc6902 format):**
 ```json
 [
-  {"op": "add", "path": "/hobbies/1", "value": "painting"},
-  {"op": "remove", "path": "/address/country"},
-  {"op": "replace", "path": "/address/city", "value": "LA"},
-  {"op": "replace", "path": "/age", "value": 26}
+  {
+    "op": "add",
+    "path": "/hobbies/1",
+    "value": "painting"
+  },
+  {
+    "op": "remove",
+    "path": "/address/country"
+  },
+  {
+    "op": "replace",
+    "path": "/address/city",
+    "value": "LA"
+  },
+  {
+    "op": "replace",
+    "path": "/age",
+    "value": 26
+  }
 ]
 ```
 
 **Output (after format):**
 ```json
 {
-  "address": {"city": "LA"},
-  "age": 26,
-  "hobbies": ["reading", "painting"]
+  "address": {
+    "city": "LA"
+  },
+  "hobbies": [
+    "reading",
+    "painting"
+  ],
+  "age": 26
 }
 ```
 
@@ -80,15 +118,50 @@ rjd data/file1.json data/file2.json
 ```bash
 # Simple
 rjd '{"a":1}' '{"a":2}'
-# → {"added":[],"removed":[],"modified":[{"path":"a","old_value":1,"new_value":2}]}
+# → {
+#     "added": [],
+#     "removed": [],
+#     "modified": [
+#       {
+#         "path": "a",
+#         "old_value": 1,
+#         "new_value": 2
+#       }
+#     ]
+#   }
 
 # Nested
 rjd '{"user":{"age":30}}' '{"user":{"age":31,"email":"x@y.com"}}'
-# → {"added":[{"path":"user.email","value":"x@y.com"}],"removed":[],"modified":[{"path":"user.age","old_value":30,"new_value":31}]}
+# → {
+#     "added": [
+#       {
+#         "path": "user.email",
+#         "value": "x@y.com"
+#       }
+#     ],
+#     "removed": [],
+#     "modified": [
+#       {
+#         "path": "user.age",
+#         "old_value": 30,
+#         "new_value": 31
+#       }
+#     ]
+#   }
 
 # Arrays
 rjd '{"items":[{"id":1}]}' '{"items":[{"id":2}]}'
-# → {"added":[],"removed":[],"modified":[{"path":"items[0].id","old_value":1,"new_value":2}]}
+# → {
+#     "added": [],
+#     "removed": [],
+#     "modified": [
+#       {
+#         "path": "items[0].id",
+#         "old_value": 1,
+#         "new_value": 2
+#       }
+#     ]
+#   }
 ```
 
 ## Path Notation
