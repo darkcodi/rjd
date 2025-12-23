@@ -157,7 +157,7 @@ fn build_filtered_value(value: &Value, changed_paths: &[String]) -> Value {
             continue;
         }
 
-        insert_value_at_path(&mut root_map, &path, value, &path);
+        insert_value_at_path(&mut root_map, path, value, path);
     }
 
     Value::Object(root_map)
@@ -358,11 +358,7 @@ fn parse_first_segment(path: &str) -> (String, bool, &str) {
 
             // Validate that the index is numeric
             if !index_str.is_empty() && index_str.chars().all(|c| c.is_ascii_digit()) {
-                let rest = if after_bracket.starts_with('.') {
-                    &after_bracket[1..]
-                } else {
-                    after_bracket
-                };
+                let rest = after_bracket.strip_prefix('.').unwrap_or(after_bracket);
                 return (index_str.to_string(), true, rest);
             }
         }
@@ -380,11 +376,7 @@ fn parse_first_segment(path: &str) -> (String, bool, &str) {
             // Check if there's more path after the brackets
             let rest = if !after_brackets.is_empty() {
                 // Skip the dot separator if present
-                if after_brackets.starts_with('.') {
-                    &after_brackets[1..]
-                } else {
-                    after_brackets
-                }
+                after_brackets.strip_prefix('.').unwrap_or(after_brackets)
             } else {
                 // No more path after the array index - this is a final array access
                 ""
