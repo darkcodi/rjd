@@ -6,9 +6,11 @@
 
 mod after;
 mod changes;
+mod json_patch;
 
 pub use after::AfterFormatter;
 pub use changes::ChangesFormatter;
+pub use json_patch::JsonPatchFormatter;
 
 /// Trait for formatting diff results
 pub trait Formatter {
@@ -22,5 +24,6 @@ pub fn create_formatter(format: crate::cli::OutputFormat) -> Box<dyn Formatter> 
     match format {
         crate::cli::OutputFormat::Changes => Box::new(ChangesFormatter::new()),
         crate::cli::OutputFormat::After => Box::new(AfterFormatter::new()),
+        crate::cli::OutputFormat::Rfc6902 => Box::new(JsonPatchFormatter::new()),
     }
 }

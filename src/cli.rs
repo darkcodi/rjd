@@ -8,6 +8,9 @@ pub enum OutputFormat {
 
     #[value(name = "after")]
     After, // Output the "after" state with only changed properties
+
+    #[value(name = "rfc6902")]
+    Rfc6902, // RFC 6902 compliant JSON Patch format
 }
 
 impl std::fmt::Display for OutputFormat {
@@ -15,6 +18,7 @@ impl std::fmt::Display for OutputFormat {
         match self {
             OutputFormat::Changes => write!(f, "changes"),
             OutputFormat::After => write!(f, "after"),
+            OutputFormat::Rfc6902 => write!(f, "rfc6902"),
         }
     }
 }
