@@ -37,7 +37,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let changes = diff(&old_json, &new_json);
 
     // Format and output results
-    let formatter = create_formatter(args.format);
+    let formatter = create_formatter(args.format, args.sort);
     let output = formatter.format(&changes)?;
 
     println!("{}", output);

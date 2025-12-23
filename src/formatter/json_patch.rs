@@ -71,24 +71,28 @@ fn urlencode(s: &str) -> String {
 /// Formatter for RFC 6902 JSON Patch output format
 pub struct JsonPatchFormatter {
     pretty: bool,
+    sort: bool,
 }
 
 impl JsonPatchFormatter {
     /// Create a new JsonPatchFormatter with pretty printing enabled
-    pub fn new() -> Self {
-        Self { pretty: true }
+    pub fn new(sort: bool) -> Self {
+        Self { pretty: true, sort }
     }
 
     /// Create a JsonPatchFormatter with custom pretty printing setting
     #[allow(dead_code)]
     pub fn with_pretty(pretty: bool) -> Self {
-        Self { pretty }
+        Self {
+            pretty,
+            sort: false,
+        }
     }
 }
 
 impl Default for JsonPatchFormatter {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
@@ -133,11 +137,37 @@ impl Formatter for JsonPatchFormatter {
         }
 
         // Serialize the array of operations
-        if self.pretty {
-            Ok(serde_json::to_string_pretty(&operations)?)
+        let json = if self.pretty {
+            serde_json::to_string_pretty(&operations)?
         } else {
-            Ok(serde_json::to_string(&operations)?)
+            serde_json::to_string(&operations)?
+        };
+
+        // If sort is enabled, parse and re-serialize with sorted keys
+        if self.sort {
+            let value: Value = serde_json::from_str(&json)?;
+            let sorted = sort_json_value(&value);
+            Ok(serde_json::to_string_pretty(&sorted)?)
+        } else {
+            Ok(json)
         }
+    }
+}
+
+/// Recursively sort a JSON value's keys
+fn sort_json_value(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut sorted_map = serde_json::Map::new();
+            let mut keys: Vec<_> = map.keys().collect();
+            keys.sort();
+            for key in keys {
+                sorted_map.insert(key.clone(), sort_json_value(map.get(key).unwrap()));
+            }
+            Value::Object(sorted_map)
+        }
+        Value::Array(arr) => Value::Array(arr.iter().map(sort_json_value).collect()),
+        _ => value.clone(),
     }
 }
 
@@ -197,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_format_empty_changes() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let changes = Changes::new();
 
         let result = formatter.format(&changes).unwrap();
@@ -209,7 +239,7 @@ mod tests {
 
     #[test]
     fn test_format_added_change() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
@@ -232,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_format_removed_change() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         changes.push(Change::Removed {
@@ -255,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_format_modified_change() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         changes.push(Change::Modified {
@@ -279,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_format_mixed_changes() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
@@ -319,7 +349,7 @@ mod tests {
 
     #[test]
     fn test_format_with_nested_paths() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         changes.push(Change::Modified {
@@ -343,7 +373,7 @@ mod tests {
 
     #[test]
     fn test_format_with_array_paths() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
@@ -385,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_format_pretty() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
@@ -404,7 +434,7 @@ mod tests {
 
     #[test]
     fn test_format_complex_value() {
-        let formatter = JsonPatchFormatter::new();
+        let formatter = JsonPatchFormatter::new(false);
         let mut changes = Changes::new();
 
         let mut nested_obj = Map::new();
@@ -427,5 +457,64 @@ mod tests {
         assert_eq!(op["op"], "add");
         assert_eq!(op["path"], "/address");
         assert!(op["value"].is_object());
+    }
+
+    #[test]
+    fn test_format_with_sort() {
+        let formatter = JsonPatchFormatter::new(true);
+        let mut changes = Changes::new();
+
+        changes.push(Change::Added {
+            path: "z_field".to_string(),
+            value: Value::String("z_value".to_string()),
+        });
+
+        changes.push(Change::Added {
+            path: "a_field".to_string(),
+            value: Value::String("a_value".to_string()),
+        });
+
+        let result = formatter.format(&changes).unwrap();
+        let parsed: Value = serde_json::from_str(&result).unwrap();
+
+        // Check that operation keys are sorted alphabetically
+        let ops = parsed.as_array().unwrap();
+        assert_eq!(ops.len(), 2);
+
+        // Each operation object should have keys sorted: op, path, value
+        let op1 = &ops[0];
+        let op1_keys: Vec<&str> = op1
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(|s| s.as_str())
+            .collect();
+        assert_eq!(op1_keys, vec!["op", "path", "value"]);
+    }
+
+    #[test]
+    fn test_format_with_sort_nested() {
+        let formatter = JsonPatchFormatter::new(true);
+        let mut changes = Changes::new();
+
+        let mut nested = Map::new();
+        nested.insert("z_key".to_string(), Value::String("z_val".to_string()));
+        nested.insert("a_key".to_string(), Value::String("a_val".to_string()));
+
+        changes.push(Change::Added {
+            path: "obj".to_string(),
+            value: Value::Object(nested),
+        });
+
+        let result = formatter.format(&changes).unwrap();
+        let parsed: Value = serde_json::from_str(&result).unwrap();
+
+        let ops = parsed.as_array().unwrap();
+        let op = &ops[0];
+
+        // Check that nested object keys within the value are sorted
+        let value_obj = op["value"].as_object().unwrap();
+        let nested_keys: Vec<&str> = value_obj.keys().map(|s| s.as_str()).collect();
+        assert_eq!(nested_keys, vec!["a_key", "z_key"]);
     }
 }

@@ -37,4 +37,8 @@ pub struct Args {
     /// Output format (default: changes)
     #[arg(short, long, default_value_t = OutputFormat::Changes, hide_default_value = true)]
     pub format: OutputFormat,
+
+    /// Sort keys in output
+    #[arg(long)]
+    pub sort: bool,
 }

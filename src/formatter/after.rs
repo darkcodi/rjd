@@ -9,24 +9,28 @@ use std::collections::HashSet;
 /// properties that were added or modified compared to file1.
 pub struct AfterFormatter {
     pretty: bool,
+    sort: bool,
 }
 
 impl AfterFormatter {
     /// Create a new AfterFormatter with pretty printing enabled
-    pub fn new() -> Self {
-        Self { pretty: true }
+    pub fn new(sort: bool) -> Self {
+        Self { pretty: true, sort }
     }
 
     /// Create an AfterFormatter with custom pretty printing setting
     #[allow(dead_code)]
     pub fn with_pretty(pretty: bool) -> Self {
-        Self { pretty }
+        Self {
+            pretty,
+            sort: false,
+        }
     }
 }
 
 impl Default for AfterFormatter {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
@@ -65,10 +69,19 @@ impl Formatter for AfterFormatter {
         let filtered_after = build_filtered_value(after_value, &changed_paths);
 
         // Serialize to JSON
-        if self.pretty {
-            Ok(serde_json::to_string_pretty(&filtered_after)?)
+        let json = if self.pretty {
+            serde_json::to_string_pretty(&filtered_after)?
         } else {
-            Ok(serde_json::to_string(&filtered_after)?)
+            serde_json::to_string(&filtered_after)?
+        };
+
+        // If sort is enabled, parse and re-serialize with sorted keys
+        if self.sort {
+            let value: Value = serde_json::from_str(&json)?;
+            let sorted = sort_json_value(&value);
+            Ok(serde_json::to_string_pretty(&sorted)?)
+        } else {
+            Ok(json)
         }
     }
 }
@@ -365,6 +378,23 @@ fn ensure_array_length(arr: &mut Vec<Value>, index: usize) {
     }
 }
 
+/// Recursively sort a JSON value's keys
+fn sort_json_value(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut sorted_map = Map::new();
+            let mut keys: Vec<_> = map.keys().collect();
+            keys.sort();
+            for key in keys {
+                sorted_map.insert(key.clone(), sort_json_value(map.get(key).unwrap()));
+            }
+            Value::Object(sorted_map)
+        }
+        Value::Array(arr) => Value::Array(arr.iter().map(sort_json_value).collect()),
+        _ => value.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -373,7 +403,7 @@ mod tests {
 
     #[test]
     fn test_format_empty_changes() {
-        let formatter = AfterFormatter::new();
+        let formatter = AfterFormatter::new(false);
         let changes = Changes::new();
 
         let result = formatter.format(&changes).unwrap();
@@ -386,7 +416,7 @@ mod tests {
 
     #[test]
     fn test_format_only_added() {
-        let formatter = AfterFormatter::new();
+        let formatter = AfterFormatter::new(false);
         let mut changes = Changes::new();
 
         let mut map = Map::new();
@@ -419,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_format_only_modified() {
-        let formatter = AfterFormatter::new();
+        let formatter = AfterFormatter::new(false);
         let mut changes = Changes::new();
 
         let mut map = Map::new();
@@ -446,7 +476,7 @@ mod tests {
 
     #[test]
     fn test_format_mixed_added_and_modified() {
-        let formatter = AfterFormatter::new();
+        let formatter = AfterFormatter::new(false);
         let mut changes = Changes::new();
 
         let mut map = Map::new();
@@ -493,7 +523,7 @@ mod tests {
 
     #[test]
     fn test_format_nested_objects() {
-        let formatter = AfterFormatter::new();
+        let formatter = AfterFormatter::new(false);
         let mut changes = Changes::new();
 
         let mut address_map = Map::new();
@@ -540,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_format_with_removed_ignored() {
-        let formatter = AfterFormatter::new();
+        let formatter = AfterFormatter::new(false);
         let mut changes = Changes::new();
 
         let mut map = Map::new();
@@ -576,7 +606,7 @@ mod tests {
 
     #[test]
     fn test_format_with_array_addition() {
-        let formatter = AfterFormatter::new();
+        let formatter = AfterFormatter::new(false);
         let mut changes = Changes::new();
 
         // Create the "after" value: hobbies = ["reading", "painting"]
@@ -611,5 +641,67 @@ mod tests {
         assert_eq!(hobbies_vec.len(), 2);
         assert_eq!(hobbies_vec[0], Value::String("reading".to_string()));
         assert_eq!(hobbies_vec[1], Value::String("painting".to_string()));
+    }
+
+    #[test]
+    fn test_format_with_sort() {
+        let formatter = AfterFormatter::new(true);
+        let mut changes = Changes::new();
+
+        let mut map = Map::new();
+        map.insert("z_field".to_string(), Value::String("z_value".to_string()));
+        map.insert("a_field".to_string(), Value::String("a_value".to_string()));
+        let after_value = Value::Object(map);
+
+        changes.after = Some(after_value);
+
+        changes.push(Change::Modified {
+            path: "z_field".to_string(),
+            old_value: Value::String("old_z".to_string()),
+            new_value: Value::String("z_value".to_string()),
+        });
+
+        changes.push(Change::Added {
+            path: "a_field".to_string(),
+            value: Value::String("a_value".to_string()),
+        });
+
+        let result = formatter.format(&changes).unwrap();
+        let parsed: Value = serde_json::from_str(&result).unwrap();
+
+        // Check that keys are sorted alphabetically
+        let obj = parsed.as_object().unwrap();
+        let keys: Vec<&str> = obj.keys().map(|s| s.as_str()).collect();
+        assert_eq!(keys, vec!["a_field", "z_field"]);
+    }
+
+    #[test]
+    fn test_format_with_sort_nested() {
+        let formatter = AfterFormatter::new(true);
+        let mut changes = Changes::new();
+
+        let mut nested = Map::new();
+        nested.insert("z_key".to_string(), Value::String("z_val".to_string()));
+        nested.insert("a_key".to_string(), Value::String("a_val".to_string()));
+
+        let mut map = Map::new();
+        map.insert("nested".to_string(), Value::Object(nested.clone()));
+        let after_value = Value::Object(map);
+
+        changes.after = Some(after_value);
+
+        changes.push(Change::Added {
+            path: "nested".to_string(),
+            value: Value::Object(nested),
+        });
+
+        let result = formatter.format(&changes).unwrap();
+        let parsed: Value = serde_json::from_str(&result).unwrap();
+
+        // Check that nested keys are sorted
+        let obj = parsed.as_object().unwrap();
+        let nested_obj = obj["nested"].as_object().unwrap();
+        let nested_keys: Vec<&str> = nested_obj.keys().map(|s| s.as_str()).collect();
+        assert_eq!(nested_keys, vec!["a_key", "z_key"]);
     }
 }

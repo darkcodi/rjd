@@ -20,10 +20,10 @@ pub trait Formatter {
 }
 
 /// Factory function to create a formatter based on output format
-pub fn create_formatter(format: crate::cli::OutputFormat) -> Box<dyn Formatter> {
+pub fn create_formatter(format: crate::cli::OutputFormat, sort: bool) -> Box<dyn Formatter> {
     match format {
-        crate::cli::OutputFormat::Changes => Box::new(ChangesFormatter::new()),
-        crate::cli::OutputFormat::After => Box::new(AfterFormatter::new()),
-        crate::cli::OutputFormat::Rfc6902 => Box::new(JsonPatchFormatter::new()),
+        crate::cli::OutputFormat::Changes => Box::new(ChangesFormatter::new(sort)),
+        crate::cli::OutputFormat::After => Box::new(AfterFormatter::new(sort)),
+        crate::cli::OutputFormat::Rfc6902 => Box::new(JsonPatchFormatter::new(sort)),
     }
 }
