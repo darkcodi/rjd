@@ -24,6 +24,7 @@ pub fn join_array_path(parent: &str, index: usize) -> String {
 }
 
 /// Get the parent path (removes the last segment)
+#[allow(dead_code)]
 pub fn parent_path(path: &str) -> String {
     if path.is_empty() {
         return "".to_string();
@@ -45,6 +46,7 @@ pub fn parent_path(path: &str) -> String {
 }
 
 /// Get the last segment of a path
+#[allow(dead_code)]
 pub fn last_segment(path: &str) -> &str {
     if path.is_empty() {
         return "";

@@ -18,6 +18,7 @@ impl ChangesFormatter {
     }
 
     /// Create a ChangesFormatter with custom pretty printing setting
+    #[allow(dead_code)]
     pub fn with_pretty(pretty: bool) -> Self {
         Self { pretty }
     }

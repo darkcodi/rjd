@@ -8,4 +8,3 @@ mod engine;
 mod visitor;
 
 pub use engine::diff;
-pub use visitor::traverse;

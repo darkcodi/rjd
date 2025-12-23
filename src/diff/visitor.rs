@@ -79,7 +79,7 @@ where
             match new {
                 Value::Null => visitor.visit_null(path, None, Some(new)),
                 Value::Bool(b) => visitor.visit_bool(path, None, Some(b)),
-                Value::Number(n) => visitor.visit_number(path, None, Some(new)),
+                Value::Number(_n) => visitor.visit_number(path, None, Some(new)),
                 Value::String(s) => visitor.visit_string(path, None, Some(s)),
                 Value::Array(a) => visitor.visit_array(path, None, Some(a)),
                 Value::Object(o) => visitor.visit_object(path, None, Some(o)),
@@ -90,7 +90,7 @@ where
             match old {
                 Value::Null => visitor.visit_null(path, Some(old), None),
                 Value::Bool(b) => visitor.visit_bool(path, Some(b), None),
-                Value::Number(n) => visitor.visit_number(path, Some(old), None),
+                Value::Number(_n) => visitor.visit_number(path, Some(old), None),
                 Value::String(s) => visitor.visit_string(path, Some(s), None),
                 Value::Array(a) => visitor.visit_array(path, Some(a), None),
                 Value::Object(o) => visitor.visit_object(path, Some(o), None),

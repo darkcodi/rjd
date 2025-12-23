@@ -3,19 +3,11 @@ use crate::path::{join_array_path, join_path};
 use crate::types::{Change, Changes};
 use serde_json::Value;
 
-/// Result of comparing two JSON values at a specific path
-#[derive(Debug, Clone)]
-pub struct DiffResult {
-    pub path: String,
-    pub change: Change,
-}
-
 /// Main diff function - compares two JSON values and returns all changes
 pub fn diff(old: &Value, new: &Value) -> Changes {
     let mut changes = Changes::new();
     let mut visitor = DiffVisitor {
         changes: &mut changes,
-        base_path: "",
     };
 
     traverse(Some(old), Some(new), "", &mut visitor);
@@ -26,7 +18,6 @@ pub fn diff(old: &Value, new: &Value) -> Changes {
 /// Visitor implementation that collects changes during traversal
 struct DiffVisitor<'a> {
     changes: &'a mut Changes,
-    base_path: &'a str,
 }
 
 impl<'a> ValueVisitor for DiffVisitor<'a> {
@@ -160,7 +151,12 @@ impl<'a> DiffVisitor<'a> {
 }
 
 impl<'a> ValueVisitorExt for DiffVisitor<'a> {
-    fn visit_modified(&mut self, path: &str, old_value: Option<&Value>, new_value: Option<&Value>) -> Self::Output {
+    fn visit_modified(
+        &mut self,
+        path: &str,
+        old_value: Option<&Value>,
+        new_value: Option<&Value>,
+    ) -> Self::Output {
         // For type mismatches or primitive modifications, just record the change
         self.handle_change(path, old_value.cloned(), new_value.cloned())
     }
