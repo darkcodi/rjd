@@ -71,7 +71,7 @@ rjd data/file1.json data/file2.json
 {
   "address": {"city": "LA"},
   "age": 26,
-  "hobbies[1]": "painting"
+  "hobbies": ["reading", "painting"]
 }
 ```
 

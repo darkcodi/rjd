@@ -144,8 +144,29 @@ fn insert_value_at_path(
 
     // If we've reached the final segment, update with the actual value from source
     if is_final {
-        if let Some(value) = get_value_at_path(source_value, original_path) {
-            *target_entry = value;
+        // Special handling for array paths: if this is an array access (ends with [index]),
+        // get the entire array from the source, not just the element
+        if original_path.ends_with(']') {
+            if let Some(bracket_pos) = original_path.find('[') {
+                let after_bracket = &original_path[bracket_pos..];
+                if after_bracket.contains('.') {
+                    // Path like "hobbies[1].name" or "items[0].id" - get the value at that path
+                    if let Some(value) = get_value_at_path(source_value, original_path) {
+                        *target_entry = value;
+                    }
+                } else {
+                    // Path like "hobbies[1]" - get the array, not the element
+                    let array_name = &original_path[..bracket_pos];
+                    if let Some(array_value) = get_value_at_path(source_value, array_name) {
+                        *target_entry = array_value;
+                    }
+                }
+            }
+        } else {
+            // Regular path - get the value at the original path
+            if let Some(value) = get_value_at_path(source_value, original_path) {
+                *target_entry = value;
+            }
         }
         return;
     }
@@ -153,7 +174,7 @@ fn insert_value_at_path(
     // Recursively insert into the next level
     match target_entry {
         Value::Object(map) => {
-            insert_value_at_path(map, remaining_path, source_value, original_path);
+            insert_value_at_path(map, remaining_path, source_value, path);
         }
         Value::Array(arr) => {
             let (index, rest) = parse_array_index(remaining_path);
@@ -165,7 +186,7 @@ fn insert_value_at_path(
                 arr[index] = Value::Object(Map::new());
                 arr[index].as_object_mut().unwrap()
             };
-            insert_value_at_path(next_map, rest, source_value, original_path);
+            insert_value_at_path(next_map, rest, source_value, path);
         }
         _ => {
             // Type mismatch - replace with appropriate container
@@ -264,33 +285,48 @@ fn get_value_at_path(value: &Value, path: &str) -> Option<Value> {
 /// Returns (segment, is_array_index, remaining_path)
 fn parse_first_segment(path: &str) -> (String, bool, &str) {
     if path.starts_with('[') {
-        // Array index at the start
+        // Array index at the start (e.g., "[0].name" or "[1]")
         if let Some(end) = path.find(']') {
-            let index_str = &path[1..end];
-            let rest = if end + 1 < path.len() && path.chars().nth(end + 1) == Some('.') {
-                &path[end + 2..]
-            } else {
-                &path[end + 1..]
-            };
-            return (index_str.to_string(), true, rest);
+            // Extract the index
+            let index_str = &path[1..end].trim();
+            let after_bracket = &path[end + 1..];
+
+            // Validate that the index is numeric
+            if !index_str.is_empty() && index_str.chars().all(|c| c.is_ascii_digit()) {
+                let rest = if after_bracket.starts_with('.') {
+                    &after_bracket[1..]
+                } else {
+                    after_bracket
+                };
+                return (index_str.to_string(), true, rest);
+            }
         }
     }
 
-    // Check if the first segment is an array index (contains brackets)
+    // Check if the first segment contains array notation (e.g., "items[0].name" or "hobbies[1]")
     if let Some(brackets_pos) = path.find('[') {
+        let segment = &path[..brackets_pos];
+
+        // Find the matching closing bracket
         if let Some(end_bracket) = path.find(']') {
-            // Check if this is an array index (ends with ])
-            if end_bracket == brackets_pos + 1 || end_bracket < path.len() {
-                let segment = &path[..end_bracket + 1];
-                let rest = if end_bracket + 1 < path.len()
-                    && path.chars().nth(end_bracket + 1) == Some('.')
-                {
-                    &path[end_bracket + 2..]
+            // Extract the part after the brackets
+            let after_brackets = &path[end_bracket + 1..];
+
+            // Check if there's more path after the brackets
+            let rest = if !after_brackets.is_empty() {
+                // Skip the dot separator if present
+                if after_brackets.starts_with('.') {
+                    &after_brackets[1..]
                 } else {
-                    &path[end_bracket + 1..]
-                };
-                return (segment.to_string(), true, rest);
-            }
+                    after_brackets
+                }
+            } else {
+                // No more path after the array index - this is a final array access
+                ""
+            };
+
+            // This is an object key followed by array access
+            return (segment.to_string(), false, rest);
         }
     }
 
@@ -536,5 +572,44 @@ mod tests {
         assert_eq!(obj.len(), 1);
         assert!(obj.contains_key("name"));
         assert!(!obj.contains_key("phone"));
+    }
+
+    #[test]
+    fn test_format_with_array_addition() {
+        let formatter = AfterFormatter::new();
+        let mut changes = Changes::new();
+
+        // Create the "after" value: hobbies = ["reading", "painting"]
+        let mut hobbies = Vec::new();
+        hobbies.push(Value::String("reading".to_string()));
+        hobbies.push(Value::String("painting".to_string()));
+
+        let mut map = Map::new();
+        map.insert("hobbies".to_string(), Value::Array(hobbies));
+
+        let after_value = Value::Object(map);
+        changes.after = Some(after_value);
+
+        // Add an "added" change for the new array element
+        changes.push(Change::Added {
+            path: "hobbies[1]".to_string(),
+            value: Value::String("painting".to_string()),
+        });
+
+        let result = formatter.format(&changes).unwrap();
+        let parsed: Value = serde_json::from_str(&result).unwrap();
+
+        assert!(parsed.is_object());
+        let obj = parsed.as_object().unwrap();
+        // The hobbies array should be present, not "hobbies[1]" as a key
+        assert!(obj.contains_key("hobbies"));
+        assert!(!obj.contains_key("hobbies[1]"));
+
+        let hobbies_array = obj.get("hobbies").unwrap();
+        assert!(hobbies_array.is_array());
+        let hobbies_vec = hobbies_array.as_array().unwrap();
+        assert_eq!(hobbies_vec.len(), 2);
+        assert_eq!(hobbies_vec[0], Value::String("reading".to_string()));
+        assert_eq!(hobbies_vec[1], Value::String("painting".to_string()));
     }
 }
