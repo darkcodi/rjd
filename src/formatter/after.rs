@@ -180,6 +180,15 @@ fn get_value_at_path(value: &Value, path: &str) -> Option<Value> {
         return Some(value.clone());
     }
 
+    // First, try to get the value treating the entire path as a single key
+    // This handles flat JSON structures where dots are part of key names
+    if let Value::Object(map) = value {
+        if let Some(value_at_path) = map.get(path) {
+            return Some(value_at_path.clone());
+        }
+    }
+
+    // If that fails, try parsing as a nested path
     // Check if path contains array index notation
     if let Some(dot_pos) = path.find('.') {
         // Check if this segment has array notation
