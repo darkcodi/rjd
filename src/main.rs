@@ -14,7 +14,7 @@ pub use cli::Args;
 pub use diff::diff;
 pub use error::RjdError;
 pub use formatter::create_formatter;
-pub use loader::{load_json_file, load_json_input};
+pub use loader::{load_json_file, load_json_input, load_json_stdin};
 
 fn main() {
     if let Err(err) = run() {
@@ -31,9 +31,19 @@ fn run() -> Result<(), RjdError> {
     let old_json = load_json_input(&args.file1).map_err(|e| RjdError::Internal {
         message: format!("Failed to load '{}': {}", args.file1, e),
     })?;
-    let new_json = load_json_input(&args.file2).map_err(|e| RjdError::Internal {
-        message: format!("Failed to load '{}': {}", args.file2, e),
-    })?;
+
+    let new_json = if args.stdin {
+        load_json_stdin().map_err(|e| RjdError::Internal {
+            message: format!("Failed to load from stdin: {}", e),
+        })?
+    } else {
+        let file2 = args
+            .file2
+            .expect("file2 is required when --stdin is not used");
+        load_json_input(&file2).map_err(|e| RjdError::Internal {
+            message: format!("Failed to load '{}': {}", file2, e),
+        })?
+    };
 
     // Compute diff
     let changes = diff(&old_json, &new_json);

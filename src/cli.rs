@@ -31,8 +31,13 @@ pub struct Args {
     /// First JSON file or inline JSON string
     pub file1: String,
 
-    /// Second JSON file or inline JSON string
-    pub file2: String,
+    /// Second JSON file or inline JSON string (not required when using --stdin)
+    #[arg(required = false)]
+    pub file2: Option<String>,
+
+    /// Read the second JSON input from stdin
+    #[arg(long)]
+    pub stdin: bool,
 
     /// Output format (default: changes)
     #[arg(short, long, default_value_t = OutputFormat::Changes, hide_default_value = true)]

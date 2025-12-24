@@ -61,6 +61,19 @@ pub fn load_json_input(input: &str) -> Result<Value, RjdError> {
     load_json_file(&path)
 }
 
+/// Load JSON from stdin
+#[allow(dead_code)]
+pub fn load_json_stdin() -> Result<Value, RjdError> {
+    let content =
+        std::io::read_to_string(std::io::stdin()).map_err(|source| RjdError::Internal {
+            message: format!("Failed to read from stdin: {}", source),
+        })?;
+    let value = serde_json::from_str(&content).map_err(|source| RjdError::Internal {
+        message: format!("Failed to parse JSON from stdin: {}", source),
+    })?;
+    Ok(value)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

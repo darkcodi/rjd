@@ -134,3 +134,16 @@ fn test_array_comparison() {
     let output = cmd.output().unwrap();
     assert!(output.status.success());
 }
+
+#[test]
+fn test_stdin_flag() {
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(r#"{"a": 1}"#)
+        .arg("--stdin")
+        .write_stdin(r#"{"a": 2}"#);
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("modified"));
+}
