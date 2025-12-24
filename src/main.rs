@@ -5,6 +5,7 @@ mod cli;
 mod diff;
 mod error;
 mod formatter;
+mod ignore;
 mod loader;
 mod path;
 mod types;
@@ -14,6 +15,7 @@ pub use cli::Args;
 pub use diff::diff;
 pub use error::RjdError;
 pub use formatter::create_formatter;
+pub use ignore::load_all_ignore_patterns;
 pub use loader::{load_json_file, load_json_input, load_json_stdin};
 
 fn main() {
@@ -46,7 +48,16 @@ fn run() -> Result<(), RjdError> {
     };
 
     // Compute diff
-    let changes = diff(&old_json, &new_json);
+    let mut changes = diff(&old_json, &new_json);
+
+    // Load and apply ignore patterns if specified
+    if !args.ignore_json.is_empty() {
+        let patterns =
+            load_all_ignore_patterns(&args.ignore_json).map_err(|e| RjdError::Internal {
+                message: e.to_string(),
+            })?;
+        changes = changes.filter_ignore_patterns(&patterns);
+    }
 
     // Format and output results
     let formatter = create_formatter(args.format, args.sort);

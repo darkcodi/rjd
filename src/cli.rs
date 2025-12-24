@@ -46,4 +46,8 @@ pub struct Args {
     /// Sort keys in output
     #[arg(long)]
     pub sort: bool,
+
+    /// JSON file containing paths to ignore (can be specified multiple times)
+    #[arg(long)]
+    pub ignore_json: Vec<String>,
 }

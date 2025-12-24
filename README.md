@@ -17,6 +17,7 @@ rjd '{"name":"John"}' '{"name":"Jane"}'     # inline JSON
 
 - `--sort, -s` - Sort keys alphabetically in the output (useful for consistent diffs)
 - `--stdin` - Read the second JSON input from stdin instead of a file argument
+- `--ignore-json <IGNORE_JSON>` - JSON file containing paths to ignore (can be specified multiple times)
 
 ## Examples
 
