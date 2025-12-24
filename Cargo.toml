@@ -1,6 +1,6 @@
 [package]
 name = "rjd"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 description = "Compare two JSON files or inline JSON strings and output the differences"
 repository = "https://github.com/darkcodi/rjd"
