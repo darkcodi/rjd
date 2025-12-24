@@ -6,16 +6,23 @@ use serde_json::Value;
 #[serde(untagged)]
 pub enum Change {
     Added {
+        #[serde(rename = "path")]
         path: String,
+        #[serde(rename = "value")]
         value: Value,
     },
     Removed {
+        #[serde(rename = "path")]
         path: String,
+        #[serde(rename = "value")]
         value: Value,
     },
     Modified {
+        #[serde(rename = "path")]
         path: String,
+        #[serde(rename = "oldValue")]
         old_value: Value,
+        #[serde(rename = "newValue")]
         new_value: Value,
     },
 }

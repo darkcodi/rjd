@@ -110,8 +110,8 @@ mod tests {
         assert_eq!(parsed["removed"][0]["value"], "555-1234");
 
         assert_eq!(parsed["modified"][0]["path"], "users[0].age");
-        assert_eq!(parsed["modified"][0]["old_value"], 25);
-        assert_eq!(parsed["modified"][0]["new_value"], 26);
+        assert_eq!(parsed["modified"][0]["oldValue"], 25);
+        assert_eq!(parsed["modified"][0]["newValue"], 26);
     }
 
     #[test]
