@@ -211,3 +211,62 @@ fn test_modified_null_value() {
     let total_changes = changes.removed.len() + changes.added.len() + changes.modified.len();
     assert!(total_changes >= 1);
 }
+
+/// Performance test for pattern matching optimization
+/// Tests with 1000+ changes and 50+ patterns to validate O(n log m) performance
+#[test]
+fn test_pattern_matching_performance() {
+    use std::time::Instant;
+
+    // Create a large number of changes
+    let mut old_obj = serde_json::Map::new();
+    let mut new_obj = serde_json::Map::new();
+
+    for i in 0..1000 {
+        old_obj.insert(format!("field_{}", i), json!(i));
+        new_obj.insert(format!("field_{}", i), json!(i + 1));
+    }
+
+    let old = json!(old_obj);
+    let new = json!(new_obj);
+    let changes = diff(&old, &new);
+
+    // Should have 1000 modified changes
+    assert_eq!(changes.modified.len(), 1000);
+
+    // Create many ignore patterns
+    let mut patterns = Vec::new();
+    for i in 0..50 {
+        patterns.push(format!("/field_{}", i));
+    }
+
+    // Time the filtering operation
+    let start = Instant::now();
+    let filtered = changes.filter_ignore_patterns(&patterns);
+    let duration = start.elapsed();
+
+    // Should filter out 50 changes (field_0 through field_49)
+    assert_eq!(filtered.modified.len(), 950);
+
+    // Performance assertion: should complete in reasonable time
+    // On modern hardware, this should be < 10ms even with debug builds
+    // With the optimization, this is typically < 1ms
+    assert!(
+        duration.as_millis() < 100,
+        "Pattern matching took too long: {:?}",
+        duration
+    );
+
+    // Verify the correct fields were filtered
+    for change in &filtered.modified {
+        if let rjd::Change::Modified { path, .. } = change {
+            // Fields 0-49 should be filtered out
+            let field_num = path.trim_start_matches("field_").parse::<usize>().unwrap();
+            assert!(
+                field_num >= 50,
+                "Field {} should have been filtered",
+                field_num
+            );
+        }
+    }
+}

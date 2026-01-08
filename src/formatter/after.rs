@@ -637,9 +637,10 @@ mod tests {
         let mut changes = Changes::new();
 
         // Create the "after" value: hobbies = ["reading", "painting"]
-        let mut hobbies = Vec::new();
-        hobbies.push(Value::String("reading".to_string()));
-        hobbies.push(Value::String("painting".to_string()));
+        let hobbies = vec![
+            Value::String("reading".to_string()),
+            Value::String("painting".to_string()),
+        ];
 
         let mut map = Map::new();
         map.insert("hobbies".to_string(), Value::Array(hobbies));

@@ -263,7 +263,7 @@ mod tests {
         let op = &ops[0];
         assert_eq!(op["op"], "remove");
         assert_eq!(op["path"], "/phone");
-        assert!(!op.get("value").is_some());
+        assert!(op.get("value").is_none());
     }
 
     #[test]

@@ -64,23 +64,25 @@ impl Changes {
 
     /// Filter out changes that match any of the ignore patterns
     pub fn filter_ignore_patterns(&self, patterns: &[String]) -> Self {
+        let matcher = PatternMatcher::new(patterns);
+
         Self {
             added: self
                 .added
                 .iter()
-                .filter(|c| !matches_pattern(c, patterns))
+                .filter(|c| !should_ignore_change(c, &matcher))
                 .cloned()
                 .collect(),
             removed: self
                 .removed
                 .iter()
-                .filter(|c| !matches_pattern(c, patterns))
+                .filter(|c| !should_ignore_change(c, &matcher))
                 .cloned()
                 .collect(),
             modified: self
                 .modified
                 .iter()
-                .filter(|c| !matches_pattern(c, patterns))
+                .filter(|c| !should_ignore_change(c, &matcher))
                 .cloned()
                 .collect(),
             after: self.after.clone(),
@@ -88,18 +90,49 @@ impl Changes {
     }
 }
 
-/// Check if a change matches any of the ignore patterns
-fn matches_pattern(change: &Change, patterns: &[String]) -> bool {
+/// Pattern matcher that pre-converts ignore patterns for efficient matching
+struct PatternMatcher {
+    /// Patterns pre-converted to dot notation for efficient prefix matching
+    patterns: Vec<String>,
+}
+
+impl PatternMatcher {
+    /// Create a new PatternMatcher by pre-converting all patterns to dot notation
+    fn new(patterns: &[String]) -> Self {
+        let patterns = patterns
+            .iter()
+            .map(|p| json_pointer_to_dot_notation(p))
+            .collect();
+        Self { patterns }
+    }
+
+    /// Check if a path should be ignored (matches any pattern prefix)
+    fn should_ignore(&self, path: &str) -> bool {
+        self.patterns.iter().any(|pattern| {
+            // Exact match or prefix match with delimiter (dot or bracket)
+            if path == pattern {
+                return true;
+            }
+            // Check if path starts with pattern followed by a delimiter
+            if path.starts_with(pattern) {
+                let remainder = &path[pattern.len()..];
+                // Must be followed by . (nested property) or [ (array index)
+                return remainder.starts_with('.') || remainder.starts_with('[');
+            }
+            false
+        })
+    }
+}
+
+/// Check if a change should be ignored using the pattern matcher
+fn should_ignore_change(change: &Change, matcher: &PatternMatcher) -> bool {
     let path = match change {
         Change::Added { path, .. } => path,
         Change::Removed { path, .. } => path,
         Change::Modified { path, .. } => path,
     };
 
-    patterns.iter().any(|pattern| {
-        let dot_notation = json_pointer_to_dot_notation(pattern);
-        path.starts_with(&dot_notation)
-    })
+    matcher.should_ignore(path)
 }
 
 /// Convert a JSON Pointer path to dot notation
