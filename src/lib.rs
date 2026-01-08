@@ -14,6 +14,7 @@ pub mod cli;
 mod diff;
 mod error;
 pub mod formatter;
+pub mod json_path;
 mod loader;
 mod path;
 pub mod types;

@@ -81,17 +81,17 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "users[0].name".to_string(),
+            path: "users[0].name".parse().unwrap(),
             value: Value::String("Alice".to_string()),
         });
 
         changes.push(Change::Removed {
-            path: "users[0].phone".to_string(),
+            path: "users[0].phone".parse().unwrap(),
             value: Value::String("555-1234".to_string()),
         });
 
         changes.push(Change::Modified {
-            path: "users[0].age".to_string(),
+            path: "users[0].age".parse().unwrap(),
             old_value: Value::Number(25.into()),
             new_value: Value::Number(26.into()),
         });
@@ -120,12 +120,12 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "z".to_string(),
+            path: "z".parse().unwrap(),
             value: Value::String("last".to_string()),
         });
 
         changes.push(Change::Added {
-            path: "a".to_string(),
+            path: "a".parse().unwrap(),
             value: Value::String("first".to_string()),
         });
 
@@ -151,7 +151,7 @@ mod tests {
         nested.insert("a_key".to_string(), Value::String("a_value".to_string()));
 
         changes.push(Change::Added {
-            path: "obj".to_string(),
+            path: "obj".parse().unwrap(),
             value: Value::Object(nested),
         });
 

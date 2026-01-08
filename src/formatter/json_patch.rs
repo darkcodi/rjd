@@ -17,7 +17,9 @@ struct JsonPatchOperation {
     value: Option<Value>,
 }
 
+#[allow(dead_code)]
 /// Converts a path from rjd's dot notation to JSON Pointer format
+/// Kept for testing to verify backward compatibility with JsonPath::to_json_pointer()
 /// Examples:
 /// - "" → ""
 /// - "name" → "/name"
@@ -60,6 +62,7 @@ fn convert_to_json_pointer(path: &str) -> String {
     result
 }
 
+#[allow(dead_code)]
 /// URL-encode a string for use in JSON Pointer
 fn urlencode(s: &str) -> String {
     // Simple encoding: ~ and / need special handling per RFC 6901
@@ -105,7 +108,7 @@ impl Formatter for JsonPatchFormatter {
             if let Change::Added { path, value } = change {
                 operations.push(JsonPatchOperation {
                     op: "add".to_string(),
-                    path: convert_to_json_pointer(path),
+                    path: path.to_json_pointer(),
                     value: Some(value.clone()),
                 });
             }
@@ -116,7 +119,7 @@ impl Formatter for JsonPatchFormatter {
             if let Change::Removed { path, .. } = change {
                 operations.push(JsonPatchOperation {
                     op: "remove".to_string(),
-                    path: convert_to_json_pointer(path),
+                    path: path.to_json_pointer(),
                     value: None,
                 });
             }
@@ -130,7 +133,7 @@ impl Formatter for JsonPatchFormatter {
             {
                 operations.push(JsonPatchOperation {
                     op: "replace".to_string(),
-                    path: convert_to_json_pointer(path),
+                    path: path.to_json_pointer(),
                     value: Some(new_value.clone()),
                 });
             }
@@ -226,7 +229,7 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "email".to_string(),
+            path: "email".parse().unwrap(),
             value: Value::String("user@example.com".to_string()),
         });
 
@@ -249,7 +252,7 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Removed {
-            path: "phone".to_string(),
+            path: "phone".parse().unwrap(),
             value: Value::String("555-1234".to_string()),
         });
 
@@ -272,7 +275,7 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Modified {
-            path: "name".to_string(),
+            path: "name".parse().unwrap(),
             old_value: Value::String("John".to_string()),
             new_value: Value::String("Jane".to_string()),
         });
@@ -296,17 +299,17 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "email".to_string(),
+            path: "email".parse().unwrap(),
             value: Value::String("user@example.com".to_string()),
         });
 
         changes.push(Change::Removed {
-            path: "phone".to_string(),
+            path: "phone".parse().unwrap(),
             value: Value::String("555-1234".to_string()),
         });
 
         changes.push(Change::Modified {
-            path: "name".to_string(),
+            path: "name".parse().unwrap(),
             old_value: Value::String("John".to_string()),
             new_value: Value::String("Jane".to_string()),
         });
@@ -336,7 +339,7 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Modified {
-            path: "user.address.city".to_string(),
+            path: "user.address.city".parse().unwrap(),
             old_value: Value::String("NYC".to_string()),
             new_value: Value::String("LA".to_string()),
         });
@@ -360,7 +363,7 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "users[0].email".to_string(),
+            path: "users[0].email".parse().unwrap(),
             value: Value::String("user@example.com".to_string()),
         });
 
@@ -383,7 +386,7 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "name".to_string(),
+            path: "name".parse().unwrap(),
             value: Value::String("Alice".to_string()),
         });
 
@@ -402,7 +405,7 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "name".to_string(),
+            path: "name".parse().unwrap(),
             value: Value::String("Alice".to_string()),
         });
 
@@ -425,7 +428,7 @@ mod tests {
         nested_obj.insert("zip".to_string(), Value::String("10001".to_string()));
 
         changes.push(Change::Added {
-            path: "address".to_string(),
+            path: "address".parse().unwrap(),
             value: Value::Object(nested_obj),
         });
 
@@ -448,12 +451,12 @@ mod tests {
         let mut changes = Changes::new();
 
         changes.push(Change::Added {
-            path: "z_field".to_string(),
+            path: "z_field".parse().unwrap(),
             value: Value::String("z_value".to_string()),
         });
 
         changes.push(Change::Added {
-            path: "a_field".to_string(),
+            path: "a_field".parse().unwrap(),
             value: Value::String("a_value".to_string()),
         });
 
@@ -485,7 +488,7 @@ mod tests {
         nested.insert("a_key".to_string(), Value::String("a_val".to_string()));
 
         changes.push(Change::Added {
-            path: "obj".to_string(),
+            path: "obj".parse().unwrap(),
             value: Value::Object(nested),
         });
 

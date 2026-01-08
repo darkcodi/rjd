@@ -1,4 +1,5 @@
 use crate::diff::visitor::{traverse, ValueVisitor, ValueVisitorExt};
+use crate::json_path::JsonPath;
 use crate::path::{join_array_path, join_path};
 use crate::types::{Change, Changes};
 use serde_json::Value;
@@ -141,22 +142,30 @@ impl<'a> ValueVisitor for DiffVisitor<'a> {
 
 impl<'a> DiffVisitor<'a> {
     fn handle_change(&mut self, path: &str, old_value: Option<Value>, new_value: Option<Value>) {
+        // Parse the path string into JsonPath
+        // Empty path is valid (root level)
+        let json_path = if path.is_empty() {
+            JsonPath::new()
+        } else {
+            path.parse::<JsonPath>().unwrap_or_default()
+        };
+
         match (old_value, new_value) {
             (None, Some(value)) => {
                 self.changes.push(Change::Added {
-                    path: path.to_string(),
+                    path: json_path,
                     value,
                 });
             }
             (Some(value), None) => {
                 self.changes.push(Change::Removed {
-                    path: path.to_string(),
+                    path: json_path,
                     value,
                 });
             }
             (Some(old_val), Some(new_val)) => {
                 self.changes.push(Change::Modified {
-                    path: path.to_string(),
+                    path: json_path,
                     old_value: old_val,
                     new_value: new_val,
                 });

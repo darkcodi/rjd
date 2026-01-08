@@ -6,6 +6,7 @@ mod diff;
 mod error;
 mod formatter;
 mod ignore;
+mod json_path;
 mod loader;
 mod path;
 mod types;

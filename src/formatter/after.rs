@@ -53,12 +53,12 @@ impl Formatter for AfterFormatter {
         let mut changed_paths = std::collections::HashSet::new();
         for change in &changes.added {
             if let Change::Added { path, .. } = change {
-                changed_paths.insert(path.clone());
+                changed_paths.insert(path.to_string());
             }
         }
         for change in &changes.modified {
             if let Change::Modified { path, .. } = change {
-                changed_paths.insert(path.clone());
+                changed_paths.insert(path.to_string());
             }
         }
 
@@ -458,7 +458,7 @@ mod tests {
         changes.after = Some(after_value);
 
         changes.push(Change::Added {
-            path: "email".to_string(),
+            path: "email".parse().unwrap(),
             value: Value::String("alice@example.com".to_string()),
         });
 
@@ -487,7 +487,7 @@ mod tests {
         changes.after = Some(after_value);
 
         changes.push(Change::Modified {
-            path: "age".to_string(),
+            path: "age".parse().unwrap(),
             old_value: Value::Number(30.into()),
             new_value: Value::Number(31.into()),
         });
@@ -518,19 +518,19 @@ mod tests {
         changes.after = Some(after_value);
 
         changes.push(Change::Modified {
-            path: "name".to_string(),
+            path: "name".parse().unwrap(),
             old_value: Value::String("Bob".to_string()),
             new_value: Value::String("Alice".to_string()),
         });
 
         changes.push(Change::Modified {
-            path: "age".to_string(),
+            path: "age".parse().unwrap(),
             old_value: Value::Number(30.into()),
             new_value: Value::Number(31.into()),
         });
 
         changes.push(Change::Added {
-            path: "email".to_string(),
+            path: "email".parse().unwrap(),
             value: Value::String("alice@example.com".to_string()),
         });
 
@@ -570,13 +570,13 @@ mod tests {
         changes.after = Some(after_value);
 
         changes.push(Change::Modified {
-            path: "user.name".to_string(),
+            path: "user.name".parse().unwrap(),
             old_value: Value::String("Bob".to_string()),
             new_value: Value::String("Alice".to_string()),
         });
 
         changes.push(Change::Added {
-            path: "user.address.city".to_string(),
+            path: "user.address.city".parse().unwrap(),
             value: Value::String("NYC".to_string()),
         });
 
@@ -609,13 +609,13 @@ mod tests {
 
         // Add a "removed" change - this should be ignored
         changes.push(Change::Removed {
-            path: "phone".to_string(),
+            path: "phone".parse().unwrap(),
             value: Value::String("555-1234".to_string()),
         });
 
         // Add a modified change
         changes.push(Change::Modified {
-            path: "name".to_string(),
+            path: "name".parse().unwrap(),
             old_value: Value::String("Bob".to_string()),
             new_value: Value::String("Alice".to_string()),
         });
@@ -650,7 +650,7 @@ mod tests {
 
         // Add an "added" change for the new array element
         changes.push(Change::Added {
-            path: "hobbies[1]".to_string(),
+            path: "hobbies[1]".parse().unwrap(),
             value: Value::String("painting".to_string()),
         });
 
@@ -684,13 +684,13 @@ mod tests {
         changes.after = Some(after_value);
 
         changes.push(Change::Modified {
-            path: "z_field".to_string(),
+            path: "z_field".parse().unwrap(),
             old_value: Value::String("old_z".to_string()),
             new_value: Value::String("z_value".to_string()),
         });
 
         changes.push(Change::Added {
-            path: "a_field".to_string(),
+            path: "a_field".parse().unwrap(),
             value: Value::String("a_value".to_string()),
         });
 
@@ -719,7 +719,7 @@ mod tests {
         changes.after = Some(after_value);
 
         changes.push(Change::Added {
-            path: "nested".to_string(),
+            path: "nested".parse().unwrap(),
             value: Value::Object(nested),
         });
 
