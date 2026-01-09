@@ -17,15 +17,6 @@ impl ChangesFormatter {
     pub fn new(sort: bool) -> Self {
         Self { pretty: true, sort }
     }
-
-    /// Create a ChangesFormatter with custom pretty printing setting
-    #[allow(dead_code)]
-    pub fn with_pretty(pretty: bool) -> Self {
-        Self {
-            pretty,
-            sort: false,
-        }
-    }
 }
 
 impl Default for ChangesFormatter {

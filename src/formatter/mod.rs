@@ -7,6 +7,7 @@
 mod after;
 mod changes;
 mod json_patch;
+mod path_filter;
 mod util;
 
 pub use after::AfterFormatter;

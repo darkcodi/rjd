@@ -147,7 +147,16 @@ impl<'a> DiffVisitor<'a> {
         let json_path = if path.is_empty() {
             JsonPath::new()
         } else {
-            path.parse::<JsonPath>().unwrap_or_default()
+            match path.parse::<JsonPath>() {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!(
+                        "Warning: Failed to parse path '{}': {}. Skipping this change.",
+                        path, e
+                    );
+                    return;
+                }
+            }
         };
 
         match (old_value, new_value) {

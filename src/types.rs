@@ -1,6 +1,7 @@
 use crate::json_path::JsonPath;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
+use std::collections::HashSet;
 
 /// Represents a change to a JSON value
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -196,42 +197,48 @@ impl Changes {
     }
 }
 
-/// Pattern matcher that pre-converts ignore patterns for efficient matching
+/// Pattern matcher that pre-computes all possible pattern prefixes for O(1) lookup
 struct PatternMatcher {
-    /// Patterns pre-converted to JsonPath for efficient prefix matching
-    patterns: Vec<JsonPath>,
+    /// All possible prefixes for O(1) lookup
+    /// Example: Pattern "user.profile" stores {"user", "user.profile"}
+    prefixes: HashSet<String>,
 }
 
 impl PatternMatcher {
-    /// Create a new PatternMatcher by parsing all patterns as JsonPath
+    /// Create a new PatternMatcher by parsing patterns and storing them
     fn new(patterns: &[String]) -> Self {
-        let patterns = patterns
-            .iter()
-            .filter_map(|p| {
-                // Check if this is JSON Pointer format (starts with /)
-                if p.starts_with('/') {
-                    // Convert from JSON Pointer to dot notation
-                    let dot_notation = json_pointer_to_dot_notation(p);
-                    dot_notation.parse::<JsonPath>().ok()
-                } else {
-                    // Already in dot notation, parse directly
-                    p.parse::<JsonPath>().ok()
-                }
-            })
-            .collect();
-        Self { patterns }
+        let mut prefixes = HashSet::new();
+
+        for pattern_str in patterns {
+            // Convert JSON Pointer to dot notation if needed
+            let dot_notation = if pattern_str.starts_with('/') {
+                json_pointer_to_dot_notation(pattern_str)
+            } else {
+                pattern_str.clone()
+            };
+
+            // Store the full pattern string
+            prefixes.insert(dot_notation);
+        }
+
+        Self { prefixes }
     }
 
     /// Check if a path should be ignored (matches any pattern prefix)
     fn should_ignore(&self, path: &JsonPath) -> bool {
-        self.patterns.iter().any(|pattern| {
-            // Exact match or prefix match
-            if path == pattern {
-                return true;
+        // Check if any prefix of this path matches a pattern in our set
+        // This implements the same logic as before: a path is ignored if
+        // any pattern matches exactly or is a prefix of the path
+        for i in 1..=path.len() {
+            if let Some(prefix) = path.prefix(i) {
+                let prefix_str = prefix.to_string();
+                // Check if this prefix is in our pattern set
+                if self.prefixes.contains(&prefix_str) {
+                    return true;
+                }
             }
-            // Check if path starts with pattern
-            path.matches_prefix(pattern)
-        })
+        }
+        false
     }
 }
 

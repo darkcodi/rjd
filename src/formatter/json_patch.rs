@@ -82,15 +82,6 @@ impl JsonPatchFormatter {
     pub fn new(sort: bool) -> Self {
         Self { pretty: true, sort }
     }
-
-    /// Create a JsonPatchFormatter with custom pretty printing setting
-    #[allow(dead_code)]
-    pub fn with_pretty(pretty: bool) -> Self {
-        Self {
-            pretty,
-            sort: false,
-        }
-    }
 }
 
 impl Default for JsonPatchFormatter {
@@ -382,7 +373,11 @@ mod tests {
 
     #[test]
     fn test_format_compact() {
-        let formatter = JsonPatchFormatter::with_pretty(false);
+        // Test compact (non-pretty) output by constructing formatter directly
+        let formatter = JsonPatchFormatter {
+            pretty: false,
+            sort: false,
+        };
         let mut changes = Changes::new();
 
         changes.push(Change::Added {

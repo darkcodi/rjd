@@ -120,6 +120,16 @@ impl JsonPath {
             .all(|(a, b)| a == b)
     }
 
+    /// Get the first n segments as a new JsonPath
+    pub fn prefix(&self, n: usize) -> Option<Self> {
+        if n == 0 || n > self.segments.len() {
+            return None;
+        }
+        Some(Self {
+            segments: self.segments[..n].to_vec(),
+        })
+    }
+
     /// Convert this path to JSON Pointer format (RFC 6901)
     ///
     /// JSON Pointer uses a slash-separated path with special encoding:
