@@ -21,6 +21,17 @@ pub enum Change {
     },
 }
 
+impl Change {
+    /// Get the path for this change
+    pub fn path(&self) -> &JsonPath {
+        match self {
+            Change::Added { path, .. } => path,
+            Change::Removed { path, .. } => path,
+            Change::Modified { path, .. } => path,
+        }
+    }
+}
+
 /// Custom serialization for Change that converts JsonPath to String for JSON output
 impl Serialize for Change {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

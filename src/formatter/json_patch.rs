@@ -17,60 +17,6 @@ struct JsonPatchOperation {
     value: Option<Value>,
 }
 
-#[allow(dead_code)]
-/// Converts a path from rjd's dot notation to JSON Pointer format
-/// Kept for testing to verify backward compatibility with JsonPath::to_json_pointer()
-/// Examples:
-/// - "" → ""
-/// - "name" → "/name"
-/// - "user.name" → "/user/name"
-/// - "users[0]" → "/users/0"
-/// - "users[0].address.city" → "/users/0/address/city"
-fn convert_to_json_pointer(path: &str) -> String {
-    if path.is_empty() {
-        return String::new();
-    }
-
-    let mut result = String::new();
-
-    // Split by dots and process each segment
-    for segment in path.split('.') {
-        if segment.is_empty() {
-            continue;
-        }
-
-        // Check if this segment contains an array index
-        if let Some(bracket_pos) = segment.find('[') {
-            // Split into key and array index
-            let key = &segment[..bracket_pos];
-            let array_part = &segment[bracket_pos + 1..segment.len() - 1]; // Extract content between [ and ]
-
-            if !key.is_empty() {
-                result.push('/');
-                result.push_str(&urlencode(key));
-            }
-
-            result.push('/');
-            result.push_str(array_part);
-        } else {
-            // Regular key
-            result.push('/');
-            result.push_str(&urlencode(segment));
-        }
-    }
-
-    result
-}
-
-#[allow(dead_code)]
-/// URL-encode a string for use in JSON Pointer
-fn urlencode(s: &str) -> String {
-    // Simple encoding: ~ and / need special handling per RFC 6901
-    // ~ must be encoded as ~0
-    // / must be encoded as ~1
-    s.replace('~', "~0").replace('/', "~1")
-}
-
 /// Formatter for RFC 6902 JSON Patch output format
 pub struct JsonPatchFormatter {
     pretty: bool,
@@ -153,54 +99,6 @@ mod tests {
     use super::*;
     use crate::types::{Change, Changes};
     use serde_json::{Map, Value};
-
-    #[test]
-    fn test_convert_to_json_pointer_empty() {
-        assert_eq!(convert_to_json_pointer(""), "");
-    }
-
-    #[test]
-    fn test_convert_to_json_pointer_simple_key() {
-        assert_eq!(convert_to_json_pointer("name"), "/name");
-    }
-
-    #[test]
-    fn test_convert_to_json_pointer_nested_object() {
-        assert_eq!(convert_to_json_pointer("user.name"), "/user/name");
-    }
-
-    #[test]
-    fn test_convert_to_json_pointer_array_index() {
-        assert_eq!(convert_to_json_pointer("users[0]"), "/users/0");
-    }
-
-    #[test]
-    fn test_convert_to_json_pointer_nested_array() {
-        assert_eq!(
-            convert_to_json_pointer("users[0].address"),
-            "/users/0/address"
-        );
-    }
-
-    #[test]
-    fn test_convert_to_json_pointer_deep_nesting() {
-        assert_eq!(convert_to_json_pointer("a.b.c.d.e"), "/a/b/c/d/e");
-    }
-
-    #[test]
-    fn test_convert_to_json_pointer_array_in_middle() {
-        assert_eq!(
-            convert_to_json_pointer("user.addresses[2].city"),
-            "/user/addresses/2/city"
-        );
-    }
-
-    #[test]
-    fn test_convert_to_json_pointer_special_chars() {
-        // Test URL encoding of special characters
-        assert_eq!(convert_to_json_pointer("user/name"), "/user~1name");
-        assert_eq!(convert_to_json_pointer("user~name"), "/user~0name");
-    }
 
     #[test]
     fn test_format_empty_changes() {

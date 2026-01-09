@@ -16,6 +16,28 @@ pub enum RjdError {
         source: serde_json::Error,
     },
 
+    #[error("File too large: {path} (size: {size} bytes, limit: {limit} bytes)")]
+    FileTooLarge {
+        path: PathBuf,
+        size: u64,
+        limit: u64,
+    },
+
+    #[error("JSON depth exceeded: depth {depth} exceeds limit {limit}")]
+    JsonDepthExceeded { depth: usize, limit: usize },
+
+    #[error("Symlink rejected: {path}")]
+    SymlinkRejected { path: PathBuf },
+
+    #[error("Circular symlink detected: {path}")]
+    CircularSymlink { path: PathBuf },
+
+    #[error("Missing second file argument")]
+    MissingFile2,
+
+    #[error("Invalid input: {input}")]
+    InvalidInput { input: String },
+
     #[error("Invalid arguments: {message}")]
     InvalidArgs { message: String },
 

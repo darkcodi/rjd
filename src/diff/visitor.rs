@@ -1,3 +1,4 @@
+use crate::json_path::JsonPath;
 use serde_json::Value;
 
 /// Visitor trait for traversing JSON values
@@ -10,7 +11,7 @@ pub trait ValueVisitor {
     /// Visit a null value
     fn visit_null(
         &mut self,
-        path: &str,
+        path: &JsonPath,
         old_value: Option<&Value>,
         new_value: Option<&Value>,
     ) -> Self::Output;
@@ -18,7 +19,7 @@ pub trait ValueVisitor {
     /// Visit a boolean value
     fn visit_bool(
         &mut self,
-        path: &str,
+        path: &JsonPath,
         old_value: Option<&bool>,
         new_value: Option<&bool>,
     ) -> Self::Output;
@@ -26,7 +27,7 @@ pub trait ValueVisitor {
     /// Visit a number value
     fn visit_number(
         &mut self,
-        path: &str,
+        path: &JsonPath,
         old_value: Option<&Value>,
         new_value: Option<&Value>,
     ) -> Self::Output;
@@ -34,7 +35,7 @@ pub trait ValueVisitor {
     /// Visit a string value
     fn visit_string(
         &mut self,
-        path: &str,
+        path: &JsonPath,
         old_value: Option<&String>,
         new_value: Option<&String>,
     ) -> Self::Output;
@@ -42,7 +43,7 @@ pub trait ValueVisitor {
     /// Visit an array value
     fn visit_array(
         &mut self,
-        path: &str,
+        path: &JsonPath,
         old_value: Option<&Vec<Value>>,
         new_value: Option<&Vec<Value>>,
     ) -> Self::Output;
@@ -50,7 +51,7 @@ pub trait ValueVisitor {
     /// Visit an object value
     fn visit_object(
         &mut self,
-        path: &str,
+        path: &JsonPath,
         old_value: Option<&serde_json::Map<String, Value>>,
         new_value: Option<&serde_json::Map<String, Value>>,
     ) -> Self::Output;
@@ -60,7 +61,7 @@ pub trait ValueVisitor {
     /// Override this method if you need to track equal values.
     /// The default implementation does nothing.
     #[allow(unused)]
-    fn visit_equal(&mut self, _path: &str, _value: &Value) -> Self::Output {
+    fn visit_equal(&mut self, _path: &JsonPath, _value: &Value) -> Self::Output {
         Self::Output::default()
     }
 }
@@ -69,7 +70,7 @@ pub trait ValueVisitor {
 pub fn traverse<V>(
     old: Option<&Value>,
     new: Option<&Value>,
-    path: &str,
+    path: &JsonPath,
     visitor: &mut V,
 ) -> V::Output
 where
@@ -143,7 +144,7 @@ pub trait ValueVisitorExt: ValueVisitor {
     /// Visit a modified value (type changed or value changed)
     fn visit_modified(
         &mut self,
-        path: &str,
+        path: &JsonPath,
         old_value: Option<&Value>,
         new_value: Option<&Value>,
     ) -> Self::Output

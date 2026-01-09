@@ -18,6 +18,31 @@ rjd '{"name":"John"}' '{"name":"Jane"}'     # inline JSON
 - `--sort, -s` - Sort keys alphabetically in the output (useful for consistent diffs)
 - `--stdin` - Read the second JSON input from stdin instead of a file argument
 - `--ignore-json <IGNORE_JSON>` - JSON file containing paths to ignore (can be specified multiple times)
+- `--inline` - Force inputs to be treated as inline JSON (disables file path detection)
+- `--max-file-size <SIZE>` - Maximum file size in bytes (default: 104857600 = 100MB). Prevents loading extremely large files.
+- `--max-depth <DEPTH>` - Maximum JSON nesting depth (default: 1000). Prevents stack overflow from deeply nested JSON.
+- `--follow-symlinks` - Follow symbolic links instead of rejecting them (default: reject symlinks for security)
+
+### Environment Variables
+
+- `RJD_MAX_FILE_SIZE` - Default maximum file size in bytes (overridden by `--max-file-size`)
+- `RJD_MAX_JSON_DEPTH` - Default maximum JSON nesting depth (overridden by `--max-depth`)
+- `RJD_FOLLOW_SYMLINKS` - Set to `1` or `true` to follow symlinks by default (overridden by `--follow-symlinks`)
+
+### Resource Limits
+
+RJD includes built-in resource limits to prevent denial-of-service attacks and accidental resource exhaustion:
+
+- **File Size Limit**: Prevents loading extremely large files that could exhaust memory (default: 100MB)
+- **JSON Depth Limit**: Prevents processing deeply nested JSON structures that could cause stack overflow (default: 1000 levels)
+
+Both limits can be customized via environment variables or CLI flags. CLI flags take precedence over environment variables.
+
+### Security Considerations
+
+- **Symlinks**: By default, RJD rejects symbolic links to prevent unauthorized file access. Use `--follow-symlinks` only with trusted input.
+- **Resource Limits**: Adjust limits based on your use case. Production environments should use conservative limits.
+- **Input Validation**: All file paths are validated before processing. Nonexistent files or invalid ignore patterns will cause immediate errors.
 
 ## Examples
 
@@ -184,6 +209,46 @@ cat file.json | rjd baseline.json --stdin
 
 # Use with process substitution
 rjd baseline.json --stdin < new.json
+```
+
+### Resource Limits
+
+```bash
+# Set custom file size limit (50MB)
+rjd file1.json file2.json --max-file-size 52428800
+
+# Set custom JSON depth limit
+rjd file1.json file2.json --max-depth 500
+
+# Use environment variables
+export RJD_MAX_FILE_SIZE=52428800
+export RJD_MAX_JSON_DEPTH=500
+rjd file1.json file2.json
+```
+
+### Inline JSON Mode
+
+```bash
+# Force inputs to be treated as inline JSON
+rjd --inline '{"a":1}' '{"a":2}'
+
+# Useful when file names conflict with JSON syntax
+rjd --inline 'file.json' 'file2.json'
+```
+
+### Symlink Handling
+
+```bash
+# Default behavior: reject symlinks (secure)
+rjd data.json config.json
+# Error: Symlink rejected: data.json
+
+# Follow symlinks (use with trusted input)
+rjd --follow-symlinks data.json config.json
+
+# Set via environment variable
+export RJD_FOLLOW_SYMLINKS=1
+rjd data.json config.json
 ```
 
 ## Path Notation

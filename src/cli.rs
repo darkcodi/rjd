@@ -1,4 +1,8 @@
 use clap::Parser;
+use std::path::PathBuf;
+
+// Import from library crate for error type
+use rjd::RjdError;
 
 /// Output format options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -50,4 +54,46 @@ pub struct Args {
     /// JSON file containing paths to ignore (can be specified multiple times)
     #[arg(long)]
     pub ignore_json: Vec<String>,
+
+    /// Maximum file size in bytes (default: 104857600, env: RJD_MAX_FILE_SIZE)
+    #[arg(long)]
+    pub max_file_size: Option<u64>,
+
+    /// Maximum JSON nesting depth (default: 1000, env: RJD_MAX_JSON_DEPTH)
+    #[arg(long)]
+    pub max_depth: Option<usize>,
+
+    /// Follow symbolic links (default: false, env: RJD_FOLLOW_SYMLINKS)
+    #[arg(long)]
+    pub follow_symlinks: bool,
+
+    /// Force input to be treated as inline JSON
+    #[arg(long)]
+    pub inline: bool,
+}
+
+impl Args {
+    /// Validate command-line arguments
+    pub fn validate(&self) -> Result<(), RjdError> {
+        // If not using stdin, file2 must be provided
+        if !self.stdin && self.file2.is_none() {
+            return Err(RjdError::MissingFile2);
+        }
+
+        // Validate ignore files exist
+        for ignore_path in &self.ignore_json {
+            let path = PathBuf::from(ignore_path);
+            if !path.exists() {
+                return Err(RjdError::FileRead {
+                    path,
+                    source: std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "Ignore file not found",
+                    ),
+                });
+            }
+        }
+
+        Ok(())
+    }
 }

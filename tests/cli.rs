@@ -276,3 +276,195 @@ fn test_ignore_json_invalid_path() {
         .arg(&ignore_file);
     cmd.assert().failure();
 }
+
+// Integration tests for new security and resource limit features
+
+#[test]
+fn test_inline_flag_forces_json_parsing() {
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    // Use --inline to treat these as JSON even though they look like file paths
+    cmd.arg("--inline").arg(r#"{"a": 1}"#).arg(r#"{"b": 2}"#);
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Should parse as inline JSON, not try to read from files
+    assert!(stdout.contains("modified") || stdout.contains("added") || stdout.contains("removed"));
+}
+
+#[test]
+fn test_max_file_size_flag() {
+    let dir = TempDir::new().unwrap();
+    let file1 = dir.path().join("file1.json");
+    let file2 = dir.path().join("file2.json");
+
+    // Create small files
+    fs::write(&file1, r#"{"a": 1}"#).unwrap();
+    fs::write(&file2, r#"{"a": 2}"#).unwrap();
+
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(&file1)
+        .arg(&file2)
+        .arg("--max-file-size")
+        .arg("100"); // Very small limit (100 bytes)
+    cmd.assert().success(); // Small files should pass
+}
+
+#[test]
+fn test_max_file_size_rejects_large_file() {
+    let dir = TempDir::new().unwrap();
+    let file1 = dir.path().join("file1.json");
+    let file2 = dir.path().join("file2.json");
+
+    // Create a larger JSON file (about 200 bytes)
+    let large_json = format!(r#"{{"data":"{}"}}"#, "x".repeat(180));
+    fs::write(&file1, &large_json).unwrap();
+    fs::write(&file2, r#"{"a": 2}"#).unwrap();
+
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(&file1)
+        .arg(&file2)
+        .arg("--max-file-size")
+        .arg("100"); // Very small limit (100 bytes)
+    let output = cmd.output().unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("File too large") || stderr.contains("exceeds limit"));
+}
+
+#[test]
+fn test_max_depth_flag() {
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(r#"{"a": 1}"#)
+        .arg(r#"{"a": 2}"#)
+        .arg("--max-depth")
+        .arg("10"); // Low depth limit
+    cmd.assert().success(); // Shallow JSON should pass
+}
+
+#[test]
+fn test_max_depth_rejects_deep_json() {
+    // Create deeply nested JSON (depth 15) by parsing a valid JSON string
+    // Build it as: {"a": {"a": {"a": ... {"a": 1} ... }}}
+    let mut deep_json = String::from("1");
+    for _ in 0..14 {
+        // Create {"a": <previous>} 14 times to get depth 15 (leaf value at depth 15)
+        deep_json = format!(r#"{{"a":{}}}"#, deep_json);
+    }
+
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(&deep_json)
+        .arg(r#"{"a": 2}"#)
+        .arg("--max-depth")
+        .arg("10"); // Limit depth to 10
+    let output = cmd.output().unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // The error should mention depth limits or JSON parsing failure
+    assert!(
+        stderr.contains("limit")
+            || stderr.contains("Invalid input")
+            || stderr.contains("Failed to parse")
+    );
+}
+
+#[test]
+fn test_follow_symlinks_flag() {
+    let dir = TempDir::new().unwrap();
+    let file1 = dir.path().join("file1.json");
+    let symlink = dir.path().join("symlink.json");
+
+    fs::write(&file1, r#"{"a": 1}"#).unwrap();
+
+    // Create a symbolic link
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&file1, &symlink).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file(&file1, &symlink).unwrap();
+
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(&symlink)
+        .arg(r#"{"a": 2}"#)
+        .arg("--follow-symlinks");
+    cmd.assert().success(); // Should follow symlink and succeed
+}
+
+#[test]
+fn test_symlink_rejected_by_default() {
+    let dir = TempDir::new().unwrap();
+    let file1 = dir.path().join("file1.json");
+    let symlink = dir.path().join("symlink.json");
+
+    fs::write(&file1, r#"{"a": 1}"#).unwrap();
+
+    // Create a symbolic link
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&file1, &symlink).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file(&file1, &symlink).unwrap();
+
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(&symlink).arg(r#"{"a": 2}"#);
+    let output = cmd.output().unwrap();
+    assert!(!output.status.success()); // Should reject symlink by default
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("symlink") || stderr.contains("Symlink"));
+}
+
+#[test]
+fn test_combined_flags() {
+    let dir = TempDir::new().unwrap();
+    let file1 = dir.path().join("file1.json");
+    let file2 = dir.path().join("file2.json");
+
+    fs::write(&file1, r#"{"a": 1, "b": 2}"#).unwrap();
+    fs::write(&file2, r#"{"a": 1, "b": 3}"#).unwrap();
+
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(&file1)
+        .arg(&file2)
+        .arg("--sort")
+        .arg("--max-file-size")
+        .arg("10000")
+        .arg("--max-depth")
+        .arg("100");
+    cmd.assert().success();
+    let output = cmd.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("modified"));
+}
+
+#[test]
+fn test_cli_validation_missing_file2() {
+    let dir = TempDir::new().unwrap();
+    let file1 = dir.path().join("file1.json");
+
+    fs::write(&file1, r#"{"a": 1}"#).unwrap();
+
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg(&file1); // Missing second file
+    cmd.assert().failure();
+}
+
+#[test]
+fn test_error_message_clarity() {
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("rjd").unwrap();
+    cmd.arg("/nonexistent/file1.json")
+        .arg("/nonexistent/file2.json");
+    let output = cmd.output().unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // Error message should be clear and helpful
+    assert!(
+        stderr.contains("file") || stderr.contains("not found") || stderr.contains("No such file")
+    );
+}
