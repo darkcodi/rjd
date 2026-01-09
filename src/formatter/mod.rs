@@ -21,11 +21,22 @@ pub trait Formatter {
         -> Result<String, Box<dyn std::error::Error>>;
 }
 
-/// Factory function to create a formatter based on output format
-pub fn create_formatter(format: crate::cli::OutputFormat, sort: bool) -> Box<dyn Formatter> {
-    match format {
-        crate::cli::OutputFormat::Changes => Box::new(ChangesFormatter::new(sort)),
-        crate::cli::OutputFormat::After => Box::new(AfterFormatter::new(sort)),
-        crate::cli::OutputFormat::Rfc6902 => Box::new(JsonPatchFormatter::new(sort)),
+/// Factory function to create a formatter based on output format string
+///
+/// # Arguments
+/// * `format_str` - One of "changes", "after", or "rfc6902"
+/// * `sort` - Whether to sort keys in JSON output
+///
+/// # Panics
+/// Panics if format_str is not one of the valid values
+pub fn create_formatter(format_str: &str, sort: bool) -> Box<dyn Formatter> {
+    match format_str {
+        "changes" => Box::new(ChangesFormatter::new(sort)),
+        "after" => Box::new(AfterFormatter::new(sort)),
+        "rfc6902" => Box::new(JsonPatchFormatter::new(sort)),
+        _ => panic!(
+            "Invalid format: {}. Must be one of: changes, after, rfc6902",
+            format_str
+        ),
     }
 }

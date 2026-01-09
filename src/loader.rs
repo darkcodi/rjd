@@ -62,7 +62,6 @@ pub fn load_json_input(input: &str) -> Result<Value, RjdError> {
 }
 
 /// Load JSON from stdin
-#[allow(dead_code)]
 pub fn load_json_stdin() -> Result<Value, RjdError> {
     let content =
         std::io::read_to_string(std::io::stdin()).map_err(|source| RjdError::Internal {

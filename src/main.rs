@@ -2,22 +2,14 @@ use clap::Parser;
 use std::process;
 
 mod cli;
-mod diff;
-mod error;
-mod formatter;
-mod ignore;
-mod json_path;
-mod loader;
-mod path;
-mod types;
 
-// Re-export types for easier importing
-pub use cli::Args;
-pub use diff::diff;
-pub use error::RjdError;
-pub use formatter::create_formatter;
-pub use ignore::load_all_ignore_patterns;
-pub use loader::{load_json_file, load_json_input, load_json_stdin};
+// Import from library crate
+use rjd::create_formatter;
+use rjd::diff;
+use rjd::load_all_ignore_patterns;
+use rjd::load_json_input;
+use rjd::load_json_stdin;
+use rjd::RjdError;
 
 fn main() {
     if let Err(err) = run() {
@@ -61,7 +53,8 @@ fn run() -> Result<(), RjdError> {
     }
 
     // Format and output results
-    let formatter = create_formatter(args.format, args.sort);
+    let format_str = args.format.to_string();
+    let formatter = create_formatter(&format_str, args.sort);
     let output = formatter
         .format(&changes)
         .map_err(|e| RjdError::Formatter {

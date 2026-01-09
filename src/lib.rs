@@ -2,18 +2,18 @@
 //!
 //! This library provides JSON comparison and diff functionality.
 
-pub use cli::Args;
-pub use cli::OutputFormat;
 pub use diff::diff;
 pub use error::RjdError;
 pub use formatter::create_formatter;
-pub use loader::{load_json_file, load_json_input};
+pub use ignore::{load_all_ignore_patterns, load_ignore_patterns};
+pub use json_path::{JsonPath, ParseError, PathSegment};
+pub use loader::{load_json_file, load_json_input, load_json_stdin};
 pub use types::{Change, Changes};
 
-pub mod cli;
 mod diff;
 mod error;
 pub mod formatter;
+pub mod ignore;
 pub mod json_path;
 mod loader;
 mod path;

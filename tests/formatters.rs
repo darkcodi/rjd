@@ -1,6 +1,6 @@
 //! Integration tests for formatters
 
-use rjd::{cli::OutputFormat, create_formatter, diff};
+use rjd::{create_formatter, diff};
 use serde_json::json;
 
 #[test]
@@ -9,7 +9,7 @@ fn test_changes_formatter_output() {
     let new = json!({"name": "Jane", "age": 30});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::Changes, false);
+    let formatter = create_formatter("changes", false);
     let output = formatter.format(&changes).unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -25,7 +25,7 @@ fn test_after_formatter_output() {
     let new = json!({"name": "John", "age": 30, "city": "NYC"});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::After, false);
+    let formatter = create_formatter("after", false);
     let output = formatter.format(&changes).unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -40,7 +40,7 @@ fn test_rfc6902_formatter_output() {
     let new = json!({"name": "Jane"});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::Rfc6902, false);
+    let formatter = create_formatter("rfc6902", false);
     let output = formatter.format(&changes).unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -58,7 +58,7 @@ fn test_changes_formatter_with_sort() {
     let new = json!({"z": 10, "a": 2, "m": 3});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::Changes, true);
+    let formatter = create_formatter("changes", true);
     let output = formatter.format(&changes).unwrap();
 
     assert!(output.contains("\"z\""));
@@ -70,7 +70,7 @@ fn test_after_formatter_with_sort() {
     let new = json!({"c": 3, "a": 1, "b": 2});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::After, true);
+    let formatter = create_formatter("after", true);
     let output = formatter.format(&changes).unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -85,7 +85,7 @@ fn test_rfc6902_add_operation() {
     let new = json!({"key": "value"});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::Rfc6902, false);
+    let formatter = create_formatter("rfc6902", false);
     let output = formatter.format(&changes).unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -99,7 +99,7 @@ fn test_rfc6902_remove_operation() {
     let new = json!({});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::Rfc6902, false);
+    let formatter = create_formatter("rfc6902", false);
     let output = formatter.format(&changes).unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -112,11 +112,7 @@ fn test_empty_changes_all_formats() {
     let old = json!({"name": "John"});
     let new = json!({"name": "John"});
 
-    for format in [
-        OutputFormat::Changes,
-        OutputFormat::After,
-        OutputFormat::Rfc6902,
-    ] {
+    for format in ["changes", "after", "rfc6902"] {
         let changes = diff(&old, &new);
         let formatter = create_formatter(format, false);
         let output = formatter.format(&changes).unwrap();
@@ -130,7 +126,7 @@ fn test_nested_object_formatter() {
     let new = json!({"user": {"name": "Jane", "email": "john@example.com"}});
     let changes = diff(&old, &new);
 
-    let formatter = create_formatter(OutputFormat::Changes, false);
+    let formatter = create_formatter("changes", false);
     let output = formatter.format(&changes).unwrap();
 
     let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();

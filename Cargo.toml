@@ -5,28 +5,23 @@ edition = "2021"
 description = "Compare two JSON files or inline JSON strings and output the differences"
 repository = "https://github.com/darkcodi/rjd"
 
-[dependencies]
-# CLI argument parsing
-clap = { version = "4.0", features = ["derive"] }
-
-# JSON parsing and serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["preserve_order"] }
-
-# Error handling
-thiserror = "1.0"
-
-# Testing
-[dev-dependencies]
-proptest = "1.0"
-tempfile = "3.0"
-assert_cmd = "2.0"
-predicates = "3.0"
+[lib]
+name = "rjd"
+path = "src/lib.rs"
 
 [[bin]]
 name = "rjd"
 path = "src/main.rs"
 
-[lib]
-name = "rjd"
-path = "src/lib.rs"
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+thiserror = "1.0"
+
+[dev-dependencies]
+proptest = "1.0"
+tempfile = "3.0"
+assert_cmd = "2.0"
+predicates = "3.0"
+serde_json = "1.0"
