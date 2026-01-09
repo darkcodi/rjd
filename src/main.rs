@@ -80,7 +80,9 @@ fn run() -> Result<(), RjdError> {
 
     // Format and output results
     let format_str = args.format.to_string();
-    let formatter = create_formatter(&format_str, args.sort);
+    let formatter = create_formatter(&format_str, args.sort).map_err(|e| RjdError::Formatter {
+        message: e.to_string(),
+    })?;
     let output = formatter
         .format(&changes)
         .map_err(|e| RjdError::Formatter {

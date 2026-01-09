@@ -48,6 +48,42 @@ pub enum RjdError {
     Formatter { message: String },
 }
 
+/// Formatter-specific errors
+#[derive(Debug, Error)]
+pub enum FormatterError {
+    #[error("Unknown format '{format}'. Valid formats are: {valid}")]
+    UnknownFormat { format: String, valid: String },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_formatter_error_unknown_format_display() {
+        let error = FormatterError::UnknownFormat {
+            format: "json".to_string(),
+            valid: "changes, after, rfc6902".to_string(),
+        };
+        let msg = format!("{}", error);
+        assert!(msg.contains("json"));
+        assert!(msg.contains("changes, after, rfc6902"));
+        assert!(msg.contains("Unknown format"));
+    }
+
+    #[test]
+    fn test_formatter_error_empty_format() {
+        let error = FormatterError::UnknownFormat {
+            format: "".to_string(),
+            valid: "changes, after, rfc6902".to_string(),
+        };
+        let msg = format!("{}", error);
+        assert!(msg.contains("changes"));
+        assert!(msg.contains("after"));
+        assert!(msg.contains("rfc6902"));
+    }
+}
+
 // Note: From implementations for IO/JSON errors are intentionally omitted.
 // These errors require a path context which cannot be provided by From.
 // Use map_err with explicit path construction instead:

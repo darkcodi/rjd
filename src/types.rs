@@ -4,6 +4,56 @@ use serde_json::Value;
 use std::collections::HashSet;
 
 /// Represents a change to a JSON value
+///
+/// # Root Path Handling
+///
+/// For changes at the root level (when the entire JSON value is replaced),
+/// the path is empty (`""`). This occurs when diffing two primitive values
+/// or when the top-level value is completely replaced.
+///
+/// # Examples
+///
+/// ## Root-level modification (empty path)
+/// ```
+/// use rjd::{diff, Change};
+/// use serde_json::json;
+///
+/// let old = json!("value1");
+/// let new = json!("value2");
+/// let changes = diff(&old, &new);
+///
+/// // Root change has empty path
+/// let mut found_root_change = false;
+/// for change in &changes.modified {
+///     if let Change::Modified { path, .. } = change {
+///         if path.to_string() == "" {
+///             found_root_change = true;
+///         }
+///     }
+/// }
+/// assert!(found_root_change, "Should find root-level modification");
+/// ```
+///
+/// ## Nested property change
+/// ```
+/// use rjd::{diff, Change};
+/// use serde_json::json;
+///
+/// let old = json!({"user": {"name": "John"}});
+/// let new = json!({"user": {"name": "Jane"}});
+/// let changes = diff(&old, &new);
+///
+/// // Nested change includes full path
+/// let mut found_nested_change = false;
+/// for change in &changes.modified {
+///     if let Change::Modified { path, .. } = change {
+///         if path.to_string() == "user.name" {
+///             found_nested_change = true;
+///         }
+///     }
+/// }
+/// assert!(found_nested_change, "Should find nested property change");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change {
     Added {
@@ -206,9 +256,62 @@ impl Changes {
             after: self.after.clone(),
         }
     }
+
+    /// Returns an iterator over filtered changes without cloning
+    ///
+    /// This method provides a zero-copy alternative to `filter_ignore_patterns`
+    /// for performance-critical code paths. The iterator yields references to
+    /// changes in the order: added, then removed, then modified.
+    ///
+    /// # Arguments
+    /// * `patterns` - Slice of ignore pattern strings to filter out
+    ///
+    /// # Returns
+    /// An iterator that yields `&Change` references for non-ignored changes
+    ///
+    /// # Example
+    /// ```
+    /// use rjd::{diff, Change};
+    /// use serde_json::json;
+    ///
+    /// let old = json!({"user": {"name": "John", "password": "secret"}});
+    /// let new = json!({"user": {"name": "Jane", "password": "new_secret"}});
+    /// let changes = diff(&old, &new);
+    ///
+    /// // Filter out password changes
+    /// let patterns = vec!["user.password".to_string()];
+    /// let filtered: Vec<&Change> = changes.iter_filtered_changes(&patterns).collect();
+    ///
+    /// // Should only have user.name change
+    /// assert_eq!(filtered.len(), 1);
+    /// ```
+    pub fn iter_filtered_changes<'a>(
+        &'a self,
+        patterns: &[String],
+    ) -> impl Iterator<Item = &'a Change> + 'a {
+        let matcher = PatternMatcher::new(patterns);
+        let matcher_added = matcher.clone();
+        let matcher_removed = matcher.clone();
+        let matcher_modified = matcher;
+
+        self.added
+            .iter()
+            .filter(move |c| !should_ignore_change(c, &matcher_added))
+            .chain(
+                self.removed
+                    .iter()
+                    .filter(move |c| !should_ignore_change(c, &matcher_removed)),
+            )
+            .chain(
+                self.modified
+                    .iter()
+                    .filter(move |c| !should_ignore_change(c, &matcher_modified)),
+            )
+    }
 }
 
 /// Pattern matcher that pre-computes all possible pattern prefixes for O(1) lookup
+#[derive(Clone)]
 struct PatternMatcher {
     /// All possible prefixes for O(1) lookup
     /// Example: Pattern "user.profile" stores {"user", "user.profile"}
@@ -340,5 +443,148 @@ mod tests {
         } else {
             panic!("Expected Modified change");
         }
+    }
+
+    #[test]
+    fn test_iter_filtered_changes_basic() {
+        let mut changes = Changes::new();
+
+        changes.push(Change::Added {
+            path: "user.email".parse().unwrap(),
+            value: json!("test@example.com"),
+        });
+        changes.push(Change::Modified {
+            path: "user.name".parse().unwrap(),
+            old_value: json!("John"),
+            new_value: json!("Jane"),
+        });
+        changes.push(Change::Removed {
+            path: "user.age".parse().unwrap(),
+            value: json!(30),
+        });
+
+        // Filter out user.name
+        let patterns = vec!["/user/name".to_string()];
+        let filtered: Vec<&Change> = changes.iter_filtered_changes(&patterns).collect();
+
+        assert_eq!(filtered.len(), 2);
+        // Should contain added and removed, but not modified
+        assert!(filtered.iter().any(|c| matches!(c, Change::Added { .. })));
+        assert!(filtered.iter().any(|c| matches!(c, Change::Removed { .. })));
+        assert!(!filtered
+            .iter()
+            .any(|c| matches!(c, Change::Modified { .. })));
+    }
+
+    #[test]
+    fn test_iter_filtered_changes_matches_filter_ignore_patterns() {
+        let mut changes = Changes::new();
+
+        changes.push(Change::Added {
+            path: "user.email".parse().unwrap(),
+            value: json!("test@example.com"),
+        });
+        changes.push(Change::Modified {
+            path: "user.name".parse().unwrap(),
+            old_value: json!("John"),
+            new_value: json!("Jane"),
+        });
+        changes.push(Change::Removed {
+            path: "user.age".parse().unwrap(),
+            value: json!(30),
+        });
+
+        let patterns = vec!["/user/name".to_string()];
+
+        // Get results from both methods
+        let filtered_old = changes.filter_ignore_patterns(&patterns);
+        let filtered_new: Vec<&Change> = changes.iter_filtered_changes(&patterns).collect();
+
+        // Count changes by type from both methods
+        let old_added = filtered_old.added.len();
+        let old_removed = filtered_old.removed.len();
+        let old_modified = filtered_old.modified.len();
+
+        let new_added = filtered_new
+            .iter()
+            .filter(|c| matches!(c, Change::Added { .. }))
+            .count();
+        let new_removed = filtered_new
+            .iter()
+            .filter(|c| matches!(c, Change::Removed { .. }))
+            .count();
+        let new_modified = filtered_new
+            .iter()
+            .filter(|c| matches!(c, Change::Modified { .. }))
+            .count();
+
+        assert_eq!(old_added, new_added);
+        assert_eq!(old_removed, new_removed);
+        assert_eq!(old_modified, new_modified);
+    }
+
+    #[test]
+    fn test_iter_filtered_changes_empty_patterns() {
+        let mut changes = Changes::new();
+
+        changes.push(Change::Added {
+            path: "user.email".parse().unwrap(),
+            value: json!("test@example.com"),
+        });
+
+        // Empty patterns should return all changes
+        let patterns: Vec<String> = vec![];
+        let filtered: Vec<&Change> = changes.iter_filtered_changes(&patterns).collect();
+
+        assert_eq!(filtered.len(), 1);
+    }
+
+    #[test]
+    fn test_iter_filtered_changes_lazy_evaluation() {
+        let mut changes = Changes::new();
+
+        // Add many changes
+        for i in 0..100 {
+            changes.push(Change::Modified {
+                path: format!("item{}", i).parse().unwrap(),
+                old_value: json!(i),
+                new_value: json!(i + 1),
+            });
+        }
+
+        // Filter out most changes
+        let patterns: Vec<String> = (0..90).map(|i| format!("/item{}", i)).collect();
+
+        // Use take to limit iteration
+        let filtered: Vec<_> = changes.iter_filtered_changes(&patterns).take(5).collect();
+
+        assert_eq!(filtered.len(), 5);
+    }
+
+    #[test]
+    fn test_iter_filtered_changes_order_preserved() {
+        let mut changes = Changes::new();
+
+        changes.push(Change::Added {
+            path: "first".parse().unwrap(),
+            value: json!(1),
+        });
+        changes.push(Change::Removed {
+            path: "second".parse().unwrap(),
+            value: json!(2),
+        });
+        changes.push(Change::Modified {
+            path: "third".parse().unwrap(),
+            old_value: json!(3),
+            new_value: json!(4),
+        });
+
+        let patterns: Vec<String> = vec![];
+        let filtered: Vec<&Change> = changes.iter_filtered_changes(&patterns).collect();
+
+        // Order should be: added, removed, modified
+        assert!(matches!(filtered[0], Change::Added { .. }));
+        assert!(matches!(filtered[1], Change::Removed { .. }));
+        assert!(matches!(filtered[2], Change::Modified { .. }));
     }
 }

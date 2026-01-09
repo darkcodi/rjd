@@ -5,6 +5,58 @@ use crate::types::{Change, Changes};
 use serde_json::Value;
 
 /// Main diff function - compares two JSON values and returns all changes
+///
+/// This function recursively compares two JSON values and identifies all differences,
+/// including added, removed, and modified values. Changes are organized into three
+/// categories and returned in a `Changes` struct.
+///
+/// # Root-Level Changes
+///
+/// When the entire JSON value is replaced (e.g., two different primitive values),
+/// the change will have an empty path (`""`). This represents a modification at
+/// the root level.
+///
+/// # Examples
+///
+/// ## Object diff
+/// ```
+/// use rjd::diff;
+/// use serde_json::json;
+///
+/// let old = json!({"name": "John", "age": 30});
+/// let new = json!({"name": "Jane", "age": 30});
+/// let changes = diff(&old, &new);
+///
+/// // One modification: "name" changed from "John" to "Jane"
+/// assert_eq!(changes.modified.len(), 1);
+/// ```
+///
+/// ## Root-level replacement
+/// ```
+/// use rjd::diff;
+/// use serde_json::json;
+///
+/// let old = json!("value1");
+/// let new = json!("value2");
+/// let changes = diff(&old, &new);
+///
+/// // Root change with empty path
+/// assert_eq!(changes.modified.len(), 1);
+/// assert_eq!(changes.modified[0].path().to_string(), "");
+/// ```
+///
+/// ## Array diff
+/// ```
+/// use rjd::diff;
+/// use serde_json::json;
+///
+/// let old = json!([1, 2, 3]);
+/// let new = json!([1, 4, 3]);
+/// let changes = diff(&old, &new);
+///
+/// // One modification: index 1 changed from 2 to 4
+/// assert_eq!(changes.modified.len(), 1);
+/// ```
 pub fn diff(old: &Value, new: &Value) -> Changes {
     let mut changes = Changes::new();
     changes.after = Some(new.clone());

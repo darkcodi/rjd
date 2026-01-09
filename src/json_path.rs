@@ -66,7 +66,22 @@ pub struct JsonPath {
 }
 
 impl JsonPath {
-    /// Create a new empty JsonPath
+    /// Create a new empty JsonPath representing the root
+    ///
+    /// An empty path (with no segments) represents the root of a JSON value.
+    /// This is used when the entire JSON value is replaced, or when working
+    /// with root-level changes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rjd::JsonPath;
+    ///
+    /// // Root path (no segments)
+    /// let root = JsonPath::new();
+    /// assert_eq!(root.to_string(), "");
+    /// assert!(root.is_empty());
+    /// ```
     pub fn new() -> Self {
         Self {
             segments: Vec::new(),
