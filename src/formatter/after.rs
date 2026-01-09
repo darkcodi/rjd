@@ -1,9 +1,141 @@
-use crate::formatter::{path_filter, sort_json_value, Formatter};
+use crate::formatter::{sort_json_value, Formatter};
+use crate::json_path::{JsonPath, PathSegment};
 use crate::types::{Change, Changes};
 use serde_json::{Map, Value};
 
-// Import path filtering utilities
-use path_filter::insert_value_at_path;
+// Import PathParser
+use super::path_parser::PathParser;
+use std::collections::HashSet;
+
+/// Check if a path or any of its descendants are in the changed paths set
+///
+/// This function determines whether a JSON node should be included in the filtered
+/// output by checking if either the exact path matches or if any descendant paths
+/// start with this path as a prefix.
+fn path_or_descendants_changed(path: &JsonPath, changed_paths: &HashSet<Vec<PathSegment>>) -> bool {
+    // Check exact match
+    if changed_paths.contains(path.segments()) {
+        return true;
+    }
+
+    // Check if any changed path is a descendant of this path
+    // A path is a descendant if it starts with all segments of this path
+    for changed in changed_paths {
+        if changed.len() >= path.len() && changed[..path.len()] == path.segments()[..] {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Collect and filter in a single pass through the value tree
+///
+/// This optimized function traverses the JSON value exactly once, building the
+/// filtered output directly during traversal. It includes a node if:
+/// - The node's path is in changed_paths, OR
+/// - Any descendant of the node is in changed_paths
+///
+/// When an object/array is directly in changed_paths, ALL its children are included
+/// (not just changed ones). This matches the old behavior where the entire structure
+/// is preserved when the parent is marked as changed.
+///
+/// This eliminates the need for separate path collection and value building phases.
+fn collect_and_filter_single_pass(
+    value: &Value,
+    current_path: &JsonPath,
+    changed_paths: &HashSet<Vec<PathSegment>>,
+) -> Option<Value> {
+    match value {
+        Value::Object(map) => {
+            // Check if this object or any of its descendants are changed
+            let object_or_descendants_changed =
+                path_or_descendants_changed(current_path, changed_paths);
+            let object_directly_changed = changed_paths.contains(current_path.segments());
+
+            if object_or_descendants_changed {
+                let mut filtered_map = Map::new();
+
+                for (key, child_value) in map {
+                    // Build path for this child
+                    let mut child_path = current_path.clone();
+                    child_path.push(PathSegment::Key(key.clone()));
+
+                    // Check if this child path or any descendants are changed
+                    let child_or_descendants_changed =
+                        path_or_descendants_changed(&child_path, changed_paths);
+
+                    if child_or_descendants_changed || object_directly_changed {
+                        // If parent object is directly changed, include all children without filtering
+                        // Otherwise, recurse normally to filter
+                        if object_directly_changed {
+                            // Include child as-is (don't filter further)
+                            filtered_map.insert(key.clone(), child_value.clone());
+                        } else {
+                            // Recurse into child with filtering
+                            if let Some(filtered_child) = collect_and_filter_single_pass(
+                                child_value,
+                                &child_path,
+                                changed_paths,
+                            ) {
+                                filtered_map.insert(key.clone(), filtered_child);
+                            }
+                        }
+                    }
+                }
+
+                Some(Value::Object(filtered_map))
+            } else {
+                None
+            }
+        }
+        Value::Array(arr) => {
+            // Check if this array or any of its elements/descendants are changed
+            let array_or_descendants_changed =
+                path_or_descendants_changed(current_path, changed_paths);
+            let array_directly_changed = changed_paths.contains(current_path.segments());
+
+            if array_or_descendants_changed {
+                // Include ALL elements of the array
+                // This matches the old behavior where the entire array is shown
+                let mut filtered_arr = Vec::new();
+
+                for (i, child_value) in arr.iter().enumerate() {
+                    if array_directly_changed {
+                        // Include element as-is (don't filter further)
+                        filtered_arr.push(child_value.clone());
+                    } else {
+                        // Recursively filter child elements
+                        let mut child_path = current_path.clone();
+                        child_path.push(PathSegment::Index(i));
+
+                        if let Some(filtered_child) =
+                            collect_and_filter_single_pass(child_value, &child_path, changed_paths)
+                        {
+                            filtered_arr.push(filtered_child);
+                        } else {
+                            // Primitive value not in changed paths, but descendant changed
+                            // Include it anyway since we're in an array that has changed descendants
+                            filtered_arr.push(child_value.clone());
+                        }
+                    }
+                }
+
+                Some(Value::Array(filtered_arr))
+            } else {
+                None
+            }
+        }
+        // Primitive values are included if path is in changed_paths
+        _ => {
+            if changed_paths.contains(current_path.segments()) {
+                Some(value.clone())
+            } else {
+                None
+            }
+        }
+    }
+}
 
 /// Formatter for the "after" output format
 ///
@@ -43,24 +175,31 @@ impl Formatter for AfterFormatter {
             }
         };
 
-        // Build a set of all changed paths for fast lookup
-        let mut changed_paths = std::collections::HashSet::new();
+        // Build a set of all changed paths as strings
+        let mut changed_paths_strings = HashSet::new();
         for change in &changes.added {
             if let Change::Added { path, .. } = change {
-                changed_paths.insert(path.to_string());
+                changed_paths_strings.insert(path.to_string());
             }
         }
         for change in &changes.modified {
             if let Change::Modified { path, .. } = change {
-                changed_paths.insert(path.to_string());
+                changed_paths_strings.insert(path.to_string());
             }
         }
 
-        // Collect paths in the order they appear in the "after" file
-        let ordered_paths = collect_paths_in_order(after_value, "", &changed_paths);
+        // Pre-parse changed paths into PathSegment vectors for O(1) comparison
+        let changed_paths_segments: HashSet<Vec<PathSegment>> = changed_paths_strings
+            .iter()
+            .filter_map(|p| PathParser::parse(p).ok())
+            .map(|parser| parser.into_segments())
+            .collect();
 
-        // Build the filtered "after" value
-        let filtered_after = build_filtered_value(after_value, &ordered_paths);
+        // Use single-pass traversal with PathParser integration
+        let root_path = JsonPath::new();
+        let filtered_after =
+            collect_and_filter_single_pass(after_value, &root_path, &changed_paths_segments)
+                .unwrap_or(Value::Object(Map::new()));
 
         // Serialize to JSON
         let json = if self.pretty {
@@ -78,83 +217,6 @@ impl Formatter for AfterFormatter {
             Ok(json)
         }
     }
-}
-
-/// Collect paths that have changes, in the order they appear in the value
-fn collect_paths_in_order(
-    value: &Value,
-    prefix: &str,
-    changed_paths: &std::collections::HashSet<String>,
-) -> Vec<String> {
-    let mut paths = Vec::new();
-
-    match value {
-        Value::Object(map) => {
-            for key in map.keys() {
-                let path = if prefix.is_empty() {
-                    key.clone()
-                } else {
-                    format!("{}.{}", prefix, key)
-                };
-
-                // Check if this exact path is in the changed set
-                if changed_paths.contains(&path) {
-                    paths.push(path);
-                } else {
-                    // Recurse into nested object/array to find changes
-                    let nested_paths =
-                        collect_paths_in_order(map.get(key).unwrap(), &path, changed_paths);
-                    paths.extend(nested_paths);
-                }
-            }
-        }
-        Value::Array(arr) => {
-            for (i, elem) in arr.iter().enumerate() {
-                let path = format!("{}[{}]", prefix, i);
-                // Check if this exact path is in the changed set
-                if changed_paths.contains(&path) {
-                    paths.push(path);
-                } else {
-                    // Recurse into array element
-                    let nested_paths = collect_paths_in_order(elem, &path, changed_paths);
-                    paths.extend(nested_paths);
-                }
-            }
-        }
-        _ => {
-            // Primitive value - check if the path itself is changed
-            if changed_paths.contains(prefix) {
-                paths.push(prefix.to_string());
-            }
-        }
-    }
-
-    paths
-}
-
-/// Build a filtered value containing only the paths in the changed_paths set
-fn build_filtered_value(value: &Value, changed_paths: &[String]) -> Value {
-    // Special case: if value is a primitive or the changed paths set is empty
-    if !value.is_object() && !value.is_array() {
-        return value.clone();
-    }
-
-    if changed_paths.is_empty() {
-        return Value::Null;
-    }
-
-    // Group paths by their first segment
-    let mut root_map = Map::new();
-
-    for path in changed_paths {
-        if path.is_empty() {
-            continue;
-        }
-
-        insert_value_at_path(&mut root_map, path, value, path);
-    }
-
-    Value::Object(root_map)
 }
 
 #[cfg(test)]

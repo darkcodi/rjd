@@ -4,8 +4,6 @@
 //! converting strings like "user.items[0].name" into a sequence of
 //! path segments with proper error handling.
 
-#![allow(dead_code)]
-
 use crate::json_path::PathSegment;
 use std::fmt;
 
