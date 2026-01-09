@@ -1,7 +1,7 @@
 //! Path parser for JSON path expressions
 //!
 //! This module provides a structured parser for JSON path expressions,
-//! converting strings like "user.items[0].name" into a sequence of
+//! converting strings like "user.items\[0\].name" into a sequence of
 //! path segments with proper error handling.
 
 use crate::json_path::PathSegment;

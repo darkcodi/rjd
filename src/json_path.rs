@@ -36,7 +36,7 @@ use std::str::FromStr;
 pub enum PathSegment {
     /// Object property key (e.g., "user" in "user.name")
     Key(String),
-    /// Array index (e.g., 0 in "items[0]")
+    /// Array index (e.g., 0 in "items\[0\]")
     Index(usize),
 }
 
