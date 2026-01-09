@@ -263,7 +263,7 @@ RJD can be used as a library in your Rust projects. Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rjd = "1.1"
+rjd = "1.2"
 ```
 
 ### Basic Diffing
